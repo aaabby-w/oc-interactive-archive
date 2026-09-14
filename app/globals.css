@@ -894,97 +894,138 @@ html.theme-changing .theme-icon {
   border-bottom: 1px solid var(--ember);
 }
 
-/* Character profile shell */
-.profile-layout {
-  display: grid;
-  grid-template-columns: minmax(320px, 0.8fr) minmax(360px, 1fr);
-  align-items: center;
-  gap: clamp(30px, 7vw, 120px);
-  min-height: calc(100svh - 108px);
-  padding: 60px clamp(24px, 9vw, 150px);
+/* Full-bleed character artwork */
+.profile-page {
+  color: var(--hero-text);
+  background: #dce2d9;
 }
 
-.profile-copy {
-  position: relative;
-  z-index: 4;
-}
-
-.profile-number {
+.profile-page > .site-header {
   position: absolute;
+  z-index: 20;
   top: 0;
   right: 0;
-  color: rgba(183, 91, 42, 0.32);
-  font-family: var(--font-display-latin);
-  font-size: clamp(86px, 12vw, 170px);
-  line-height: 0.7;
+  left: 0;
+  color: var(--hero-text);
+  border-color: color-mix(in srgb, var(--hero-text) 18%, transparent);
+  background: linear-gradient(180deg, var(--header-bg), transparent);
+  backdrop-filter: blur(2px);
 }
 
-.profile-copy h1 {
-  margin: 70px 0 0;
+.profile-art {
+  position: relative;
+  width: 100%;
+  min-height: 100svh;
+  overflow: hidden;
+}
+
+.profile-art-image {
+  object-fit: cover;
+  filter: var(--hero-filter);
+  transform: scale(1.025);
+  animation: profile-art-arrive 1.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: filter 650ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.profile-art-overlay {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--header-bg) 72%, transparent), transparent 48%),
+    linear-gradient(180deg, transparent 52%, color-mix(in srgb, var(--header-bg) 60%, transparent));
+  pointer-events: none;
+}
+
+.profile-art::after {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  content: "";
+  opacity: 0.14;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.2'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+}
+
+.profile-art-title {
+  position: absolute;
+  z-index: 3;
+  bottom: clamp(66px, 10vh, 118px);
+  left: clamp(28px, 8vw, 132px);
+}
+
+.profile-art-title p {
+  margin: 0 0 20px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+}
+
+.profile-art-title h1 {
+  margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(48px, 6vw, 94px);
+  font-size: clamp(58px, 9vw, 148px);
   font-weight: 400;
   letter-spacing: 0.1em;
+  line-height: 0.95;
+  text-shadow: 0 2px 32px color-mix(in srgb, var(--header-bg) 52%, transparent);
 }
 
-.profile-en {
-  margin: 6px 0 0;
-  color: var(--mist);
+.profile-art-title > span {
+  display: block;
+  margin-top: 12px;
   font-size: 11px;
-  letter-spacing: 0.26em;
+  letter-spacing: 0.3em;
 }
 
-.profile-summary {
-  max-width: 400px;
-  margin: 54px 0;
-  padding-left: 20px;
-  border-left: 1px solid var(--ember);
-  color: var(--mist);
-  font-family: var(--font-display);
-  font-size: 17px;
-  line-height: 1.8;
-}
-
-.profile-copy dl {
+.profile-art-folio {
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  right: 26px;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  margin: 0;
-  border-top: 1px solid var(--hairline);
-  border-bottom: 1px solid var(--hairline);
+  justify-items: center;
+  gap: 12px;
+  max-height: 48vh;
+  color: color-mix(in srgb, var(--hero-text) 76%, transparent);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  transform: translateY(-50%);
+  writing-mode: vertical-rl;
 }
 
-.profile-copy dl div {
-  padding: 18px 0;
+.profile-art-folio i {
+  width: 1px;
+  height: 54px;
+  background: color-mix(in srgb, var(--hero-text) 36%, transparent);
 }
 
-.profile-copy dl div + div {
-  padding-left: 22px;
-  border-left: 1px solid var(--hairline);
-}
-
-.profile-copy dt {
-  color: var(--mist);
-  font-size: 8px;
-  letter-spacing: 0.2em;
-}
-
-.profile-copy dd {
-  margin: 6px 0 0;
+.profile-art-back {
+  position: absolute;
+  z-index: 3;
+  right: clamp(28px, 6vw, 96px);
+  bottom: clamp(34px, 6vh, 70px);
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--hero-text) 40%, transparent);
   font-family: var(--font-display);
   font-size: 14px;
+  letter-spacing: 0.12em;
+  transition: gap 300ms cubic-bezier(0.22, 1, 0.36, 1), border-color 200ms ease;
 }
 
-.profile-layout .portrait-stage {
-  position: relative;
-  top: auto;
-  right: auto;
-  width: min(100%, 480px);
-  justify-self: center;
+.profile-art-back:hover,
+.profile-art-back:focus-visible {
+  gap: 20px;
+  border-color: var(--ember);
 }
 
-.inline-back {
-  position: static;
-  margin-top: 32px;
+@keyframes profile-art-arrive {
+  from { opacity: 0; transform: scale(1.09); }
+  to { opacity: 1; transform: scale(1.025); }
 }
 
 @media (max-width: 1050px) {
@@ -1020,9 +1061,6 @@ html.theme-changing .theme-icon {
     width: 38vw;
   }
 
-  .profile-layout {
-    min-height: calc(100svh - 153px);
-  }
 }
 
 @media (max-width: 760px) {
@@ -1146,21 +1184,52 @@ html.theme-changing .theme-icon {
     font-size: 18px;
   }
 
-  .profile-layout {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    min-height: auto;
-    padding: 68px 24px 100px;
+  .profile-page > .site-header {
+    position: absolute;
   }
 
-  .profile-number {
-    font-size: 86px;
+  .profile-art {
+    min-height: 100svh;
   }
 
-  .profile-layout .portrait-stage {
-    width: min(86vw, 430px);
-    margin: 16px auto 0;
+  .profile-art-overlay {
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--header-bg) 36%, transparent) 0%, transparent 38%),
+      linear-gradient(0deg, color-mix(in srgb, var(--header-bg) 78%, transparent) 0%, transparent 45%);
+  }
+
+  .profile-art-title {
+    right: 52px;
+    bottom: 58px;
+    left: 24px;
+  }
+
+  .profile-art-title p {
+    margin-bottom: 14px;
+  }
+
+  .profile-art-title h1 {
+    font-size: clamp(52px, 17vw, 82px);
+  }
+
+  .profile-art-folio {
+    top: auto;
+    right: 17px;
+    bottom: 64px;
+    transform: none;
+  }
+
+  .profile-art-folio span:last-child,
+  .profile-art-folio i {
+    display: none;
+  }
+
+  .profile-art-back {
+    top: 178px;
+    right: auto;
+    bottom: auto;
+    left: 24px;
+    font-size: 13px;
   }
 }
 

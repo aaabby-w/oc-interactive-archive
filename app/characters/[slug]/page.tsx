@@ -1,6 +1,6 @@
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { PortraitStage } from "@/components/portrait-stage";
 import { SiteHeader } from "@/components/site-header";
 import { getCharacterBySlug, getPublishedCharacters } from "@/content/characters/registry";
 import { siteCopy } from "@/content/site";
@@ -18,23 +18,44 @@ export default async function CharacterPage({ params }: CharacterPageProps) {
   const entry = getCharacterBySlug(slug);
   if (!entry) notFound();
 
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+  const portrait = entry.character.media.portrait;
+  const artwork = portrait
+    ? portrait.startsWith("/")
+      ? `${basePath}${portrait}`
+      : portrait
+    : `${basePath}/images/hero-conservatory-placeholder.png`;
+
   return (
     <main className="profile-page">
       <SiteHeader />
-      <section className="profile-layout">
-        <div className="profile-copy">
-          <p className="eyebrow">{siteCopy.common.profile}</p>
-          <span className="profile-number">{String(entry.order).padStart(2, "0")}</span>
-          <h1>{entry.character.displayName.zh}</h1>
-          <p className="profile-en">{entry.character.displayName.en}</p>
-          <p className="profile-summary">{entry.character.summary.zh}</p>
-          <dl>
-            <div><dt>{siteCopy.common.status}</dt><dd>{siteCopy.common.pending}</dd></div>
-            <div><dt>FEATURED</dt><dd>{entry.featured ? siteCopy.common.featured : "—"}</dd></div>
-          </dl>
-          <Link className="back-link inline-back" href="/characters"><span aria-hidden="true">←</span> {siteCopy.common.back}</Link>
+      <section className="profile-art" aria-labelledby="profile-title">
+        <Image
+          className="profile-art-image"
+          src={artwork}
+          alt={entry.character.media.portraitAlt ?? ""}
+          fill
+          priority
+          sizes="100vw"
+          style={{ objectPosition: entry.character.media.focalPoint ?? "58% center" }}
+        />
+        <div className="profile-art-overlay" aria-hidden="true" />
+
+        <div className="profile-art-title">
+          <p>{siteCopy.common.profile}</p>
+          <h1 id="profile-title">{entry.character.displayName.zh}</h1>
+          <span>{entry.character.displayName.en}</span>
         </div>
-        <PortraitStage nameZh={entry.character.displayName.zh} nameEn={entry.character.displayName.en} />
+
+        <div className="profile-art-folio" aria-hidden="true">
+          <span>NO. {String(entry.order).padStart(3, "0")}</span>
+          <i />
+          <span>{entry.character.summary.en}</span>
+        </div>
+
+        <Link className="profile-art-back" href="/characters">
+          <span aria-hidden="true">←</span> {siteCopy.common.back}
+        </Link>
       </section>
     </main>
   );
