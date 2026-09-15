@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { GlobalAtmosphere } from "@/components/global-atmosphere";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
@@ -24,7 +25,10 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <body className="antialiased">
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <GlobalAtmosphere />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

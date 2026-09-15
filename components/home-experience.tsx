@@ -19,18 +19,14 @@ export function HomeExperience({
   characterNameEn,
 }: HomeExperienceProps) {
   const root = useRef<HTMLDivElement>(null);
-  const follower = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
     const container = root.current;
-    const cursor = follower.current;
-    if (!container || !cursor) return;
+    if (!container) return;
 
     const reduceMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
-    const finePointer = window.matchMedia("(pointer: fine)").matches;
-
     gsap.registerPlugin(ScrollTrigger);
 
     const context = gsap.context(() => {
@@ -91,59 +87,15 @@ export function HomeExperience({
       }
     }, container);
 
-    let removePointerListeners = () => undefined;
-
-    if (finePointer && !reduceMotion) {
-      const moveX = gsap.quickTo(cursor, "x", { duration: 0.52, ease: "power3" });
-      const moveY = gsap.quickTo(cursor, "y", { duration: 0.52, ease: "power3" });
-
-      const onPointerMove = (event: PointerEvent) => {
-        moveX(event.clientX);
-        moveY(event.clientY);
-        cursor.dataset.visible = "true";
-      };
-
-      const onPointerLeave = () => {
-        cursor.dataset.visible = "false";
-      };
-
-      const interactive = container.querySelectorAll<HTMLElement>(
-        "a, button, [data-cursor-focus]",
-      );
-      const grow = () => cursor.dataset.active = "true";
-      const shrink = () => cursor.dataset.active = "false";
-
-      window.addEventListener("pointermove", onPointerMove, { passive: true });
-      document.documentElement.addEventListener("mouseleave", onPointerLeave);
-      interactive.forEach((element) => {
-        element.addEventListener("pointerenter", grow);
-        element.addEventListener("pointerleave", shrink);
-      });
-
-      removePointerListeners = () => {
-        window.removeEventListener("pointermove", onPointerMove);
-        document.documentElement.removeEventListener("mouseleave", onPointerLeave);
-        interactive.forEach((element) => {
-          element.removeEventListener("pointerenter", grow);
-          element.removeEventListener("pointerleave", shrink);
-        });
-      };
-    }
-
     return () => {
-      removePointerListeners();
       context.revert();
     };
   }, []);
 
   return (
     <div className="home-experience" ref={root}>
-      <div className="mouse-follower" ref={follower} aria-hidden="true">
-        <span />
-      </div>
-
       <section className="art-hero" aria-labelledby="home-title">
-        <div className="hero-art" aria-hidden="true">
+        <div className="hero-art" data-tilt-depth="1" aria-hidden="true">
           <Image
             className="hero-art-image"
             src={heroImage}
