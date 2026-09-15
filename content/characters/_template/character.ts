@@ -14,4 +14,8 @@ export const characterTemplate: Character = {
     focalPoint: "50% 35%",
   },
   modules: {},
+  residence: {
+    representativeItems: [],
+    greetingReplies: {},
+  },
 };

@@ -60,7 +60,10 @@ export default async function CharacterPage({ params }: CharacterPageProps) {
           <span aria-hidden="true">←</span> {siteCopy.common.back}
         </Link>
       </section>
-      <CharacterRoomDemo characterName={entry.character.displayName.zh} />
+      <CharacterRoomDemo
+        characterName={entry.character.displayName.zh}
+        residence={entry.character.residence}
+      />
     </main>
   );
 }

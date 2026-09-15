@@ -81,6 +81,53 @@ export const siteCopy = {
     profile: "人物记录",
     residenceUnavailable: "该角色目前没有开放的居所记录。",
   },
+  residence: {
+    eyebrow: "02 / RESIDENCE",
+    title: "居所",
+    intro: "从窗口向里看。她会按照时间与随机事件，在房间、工作地点和日常事务之间自行行动。",
+    watchHint: "拖动视角 · DRAG TO LOOK",
+    ambientOn: "播放环境音乐",
+    ambientOff: "关闭环境音乐",
+    ambientEn: "AMBIENT",
+    audioUnavailable: "当前浏览器没有成功开启声音。可以稍后再试一次。",
+    greet: "敲敲窗",
+    greetEn: "SAY HI",
+    defaultReply: "房间按照本地时间自行变化。你可以观察，但不能替她决定下一步。",
+    activities: {
+      sleep: { zh: "已经睡下", en: "ASLEEP", mood: "(－_－) zzZ" },
+      work: { zh: "在家办公", en: "WORKING AT HOME", mood: "( •̀ᴗ•́ )و" },
+      read: { zh: "正在看文献", en: "READING", mood: "( ｡•̀ᴗ-)✧" },
+      cat: { zh: "正在逗猫", en: "WITH THE CAT", mood: "ฅ^•ﻌ•^ฅ" },
+      idle: { zh: "在房间里休息", en: "AT HOME", mood: "( ˘͈ ᵕ ˘͈ )" },
+      away: { zh: "外出中", en: "AWAY", mood: "⌂  · · ·" },
+    },
+    replies: {
+      sleep: [
+        "她把被子往上拉了拉：三更半夜不打招呼。明早再来。",
+        "窗帘没有动。门边的小纸条写着：睡着了，谢绝叫醒。",
+      ],
+      work: [
+        "她从屏幕上移开视线，朝窗口点了点头，又继续工作。",
+        "她举起杯子示意了一下：看见你了，等我写完这一段。",
+      ],
+      read: [
+        "她用书签夹住刚读到的那页，向你挥了挥手：“你好。”",
+        "她抬起眼睛，安静地笑了一下，然后把窗边的位置让出一点。",
+      ],
+      cat: [
+        "猫先发现了你。她抱着猫爪，替它向你挥了两下。",
+        "她指了指猫，认真宣布：今天由它负责接待。",
+      ],
+      idle: [
+        "她停下手里的事，走到窗边：“你好。”",
+        "她轻轻敲了敲玻璃作为回应，又朝你挥挥手。",
+      ],
+      away: [
+        "门没有开。她也许在上班，或者只是出去买菜了。",
+        "房间里没人。桌上的便签说：晚一点回来。",
+      ],
+    },
+  },
 } as const;
 
 export type RouteCopyKey = keyof typeof siteCopy.routes;

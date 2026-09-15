@@ -19,6 +19,15 @@ export type CharacterModules = {
   residence?: boolean;
 };
 
+export type ResidenceActivity = "sleep" | "work" | "read" | "cat" | "idle" | "away";
+
+export type ResidenceProp = "camera" | "books" | "journal" | "tea" | "flowers";
+
+export type CharacterResidence = {
+  representativeItems?: ResidenceProp[];
+  greetingReplies?: Partial<Record<ResidenceActivity, string[]>>;
+};
+
 export type Character = {
   slug: string;
   displayName: BilingualText;
@@ -26,6 +35,7 @@ export type Character = {
   summary: BilingualText;
   media: CharacterMedia;
   modules: CharacterModules;
+  residence?: CharacterResidence;
 };
 
 export type CharacterRegistryEntry = {

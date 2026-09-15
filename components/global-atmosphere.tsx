@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { Switch } from "@/components/ui/switch";
 
-type TiltState = "idle" | "enabled" | "denied" | "unsupported";
+type TiltPermission = "unknown" | "granted" | "denied" | "unsupported";
 
 type OrientationEventConstructor = typeof DeviceOrientationEvent & {
   requestPermission?: () => Promise<"granted" | "denied">;
@@ -27,7 +28,15 @@ function setMotion(x: number, y: number) {
 export function GlobalAtmosphere() {
   const pathname = usePathname();
   const follower = useRef<HTMLDivElement>(null);
-  const [tiltState, setTiltState] = useState<TiltState>("idle");
+  const [spatialEnabled, setSpatialEnabled] = useState(true);
+  const [coarsePointer, setCoarsePointer] = useState(false);
+  const [tiltPermission, setTiltPermission] = useState<TiltPermission>("unknown");
+
+  useEffect(() => {
+    const isCoarse = window.matchMedia("(pointer: coarse)").matches;
+    setCoarsePointer(isCoarse);
+    if (isCoarse) setSpatialEnabled(false);
+  }, []);
 
   useEffect(() => {
     const cursor = follower.current;
@@ -70,7 +79,7 @@ export function GlobalAtmosphere() {
         moveX(event.clientX);
         moveY(event.clientY);
         cursor.dataset.visible = "true";
-        setMotion(normalizedX, normalizedY);
+        if (spatialEnabled) setMotion(normalizedX, normalizedY);
       };
       const onPointerLeave = () => {
         cursor.dataset.visible = "false";
@@ -102,10 +111,10 @@ export function GlobalAtmosphere() {
       context.revert();
       setMotion(0, 0);
     };
-  }, [pathname]);
+  }, [pathname, spatialEnabled]);
 
   useEffect(() => {
-    if (tiltState !== "enabled") return;
+    if (!spatialEnabled || tiltPermission !== "granted") return;
 
     const onOrientation = (event: DeviceOrientationEvent) => {
       const x = clamp((event.gamma ?? 0) / 24, -1, 1);
@@ -118,12 +127,12 @@ export function GlobalAtmosphere() {
       window.removeEventListener("deviceorientation", onOrientation, true);
       setMotion(0, 0);
     };
-  }, [tiltState]);
+  }, [spatialEnabled, tiltPermission]);
 
-  const enableTilt = async () => {
+  const requestTilt = async () => {
     if (!("DeviceOrientationEvent" in window)) {
-      setTiltState("unsupported");
-      return;
+      setTiltPermission("unsupported");
+      return false;
     }
 
     const OrientationEvent = window.DeviceOrientationEvent as OrientationEventConstructor;
@@ -131,35 +140,50 @@ export function GlobalAtmosphere() {
       const permission = OrientationEvent.requestPermission
         ? await OrientationEvent.requestPermission()
         : "granted";
-      setTiltState(permission === "granted" ? "enabled" : "denied");
+      setTiltPermission(permission === "granted" ? "granted" : "denied");
+      return permission === "granted";
     } catch {
-      setTiltState("denied");
+      setTiltPermission("denied");
+      return false;
     }
   };
 
-  const tiltLabel = {
-    idle: "开启视差",
-    enabled: "视差已开启",
-    denied: "视差未授权",
-    unsupported: "设备不支持",
-  }[tiltState];
+  const changeSpatialMode = async (next: boolean) => {
+    if (!next) {
+      setSpatialEnabled(false);
+      setMotion(0, 0);
+      return;
+    }
+
+    if (!coarsePointer || tiltPermission === "granted") {
+      setSpatialEnabled(true);
+      return;
+    }
+
+    if (await requestTilt()) setSpatialEnabled(true);
+  };
+
+  const unavailable = tiltPermission === "denied" || tiltPermission === "unsupported";
+  const label = unavailable
+    ? tiltPermission === "denied" ? "视差未授权" : "设备不支持"
+    : spatialEnabled ? "视差开启" : "视差关闭";
 
   return (
     <>
       <div className="mouse-follower global-follower" ref={follower} aria-hidden="true">
         <span />
       </div>
-      <button
-        className="mobile-tilt-control"
-        type="button"
-        onClick={enableTilt}
-        disabled={tiltState !== "idle"}
-        data-enabled={tiltState === "enabled"}
-        aria-label={`${tiltLabel}，使用手机倾斜改变页面视角`}
-      >
-        <span className="tilt-control-icon" aria-hidden="true"><i /></span>
-        <span>{tiltLabel}</span>
-      </button>
+      <div className="spatial-control" data-enabled={spatialEnabled} data-unavailable={unavailable}>
+        <span className="spatial-lens" aria-hidden="true"><i /><i /><b /></span>
+        <span className="spatial-copy"><b>{label}</b><small>DEPTH</small></span>
+        <Switch
+          className="spatial-switch"
+          checked={spatialEnabled}
+          onCheckedChange={changeSpatialMode}
+          disabled={unavailable}
+          aria-label={spatialEnabled ? "关闭页面视差" : "开启页面视差"}
+        />
+      </div>
     </>
   );
 }

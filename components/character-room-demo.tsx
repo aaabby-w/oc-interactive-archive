@@ -3,32 +3,25 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import type {
+  CharacterResidence,
+  ResidenceActivity,
+  ResidenceProp,
+} from "@/content/characters/types";
+import { siteCopy } from "@/content/site";
+import {
+  chooseResidenceActivity,
+  chooseResidenceReply,
+} from "@/lib/residence-state";
 
-type Activity = "sleep" | "work" | "read" | "cat" | "idle" | "away";
-
-const activityCopy: Record<Activity, { zh: string; en: string }> = {
-  sleep: { zh: "已经睡下", en: "ASLEEP" },
-  work: { zh: "在家办公", en: "WORKING AT HOME" },
-  read: { zh: "正在看文献", en: "READING" },
-  cat: { zh: "正在逗猫", en: "WITH THE CAT" },
-  idle: { zh: "在房间里休息", en: "AT HOME" },
-  away: { zh: "外出中", en: "AWAY" },
+type AmbientAudio = {
+  context: AudioContext;
+  master: GainNode;
+  interval: number;
+  oscillators: OscillatorNode[];
 };
 
-function choicesForHour(hour: number): Activity[] {
-  if (hour < 6) return ["sleep", "sleep", "sleep", "read"];
-  if (hour < 9) return ["idle", "cat", "read"];
-  if (hour < 18) return ["work", "work", "read", "away", "away", "cat"];
-  if (hour < 23) return ["work", "read", "cat", "idle", "away"];
-  return ["sleep", "sleep", "read"];
-}
-
-function chooseActivity(hour: number, current?: Activity) {
-  const choices = choicesForHour(hour);
-  const alternatives = choices.filter((choice) => choice !== current);
-  const pool = alternatives.length ? alternatives : choices;
-  return pool[Math.floor(Math.random() * pool.length)];
-}
+const residenceProps: ResidenceProp[] = ["camera", "books", "journal", "tea", "flowers"];
 
 function formatTime(date: Date) {
   return new Intl.DateTimeFormat("zh-CN", {
@@ -38,17 +31,25 @@ function formatTime(date: Date) {
   }).format(date);
 }
 
-export function CharacterRoomDemo({ characterName }: { characterName: string }) {
+export function CharacterRoomDemo({
+  characterName,
+  residence,
+}: {
+  characterName: string;
+  residence?: CharacterResidence;
+}) {
   const mount = useRef<HTMLDivElement>(null);
-  const activityRef = useRef<Activity>("idle");
+  const activityRef = useRef<ResidenceActivity>("idle");
   const waveUntil = useRef(0);
+  const ambientAudio = useRef<AmbientAudio | null>(null);
   const [clock, setClock] = useState<Date | null>(null);
-  const [activity, setActivity] = useState<Activity>("idle");
-  const [reply, setReply] = useState("房间会按照本地时间与随机事件自行变化。");
+  const [activity, setActivity] = useState<ResidenceActivity>("idle");
+  const [musicOn, setMusicOn] = useState(false);
+  const [reply, setReply] = useState<string>(siteCopy.residence.defaultReply);
 
   useEffect(() => {
     const selectNextActivity = () => {
-      const next = chooseActivity(new Date().getHours(), activityRef.current);
+      const next = chooseResidenceActivity(new Date().getHours(), activityRef.current);
       activityRef.current = next;
       setActivity(next);
     };
@@ -171,6 +172,59 @@ export function CharacterRoomDemo({ characterName }: { characterName: string }) 
     doorKnob.position.set(5.48, 1.12, -1.31);
     scene.add(doorKnob);
 
+    const foregroundTable = addBox([11.8, 0.42, 1.7], [0, 0.42, 3.55], 0xa98261);
+    foregroundTable.receiveShadow = true;
+    const configuredProps = residence?.representativeItems?.length
+      ? residence.representativeItems
+      : [...residenceProps].sort(() => Math.random() - 0.5).slice(0, 3);
+    const propPositions = [-3.15, 0, 3.15];
+
+    configuredProps.slice(0, 3).forEach((prop, index) => {
+      const x = propPositions[index];
+      if (prop === "camera") {
+        addBox([1.18, 0.72, 0.52], [x, 0.95, 3.35], 0x403d38);
+        const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.34, 0.32, 20), matte(0x1f2422));
+        lens.position.set(x, 0.95, 3.04);
+        lens.rotation.x = Math.PI / 2;
+        lens.castShadow = true;
+        scene.add(lens);
+      }
+      if (prop === "books") {
+        addBox([1.75, 0.22, 0.92], [x, 0.77, 3.5], 0x718c80).rotation.y = -0.08;
+        addBox([1.55, 0.2, 0.82], [x + 0.12, 0.99, 3.48], 0xc9a981).rotation.y = 0.08;
+      }
+      if (prop === "journal") {
+        const journal = addBox([1.48, 0.16, 1.05], [x, 0.73, 3.42], 0x485b52);
+        journal.rotation.y = -0.22;
+        addBox([0.06, 0.04, 0.78], [x, 0.84, 3.38], 0xc9aa72).rotation.y = -0.22;
+      }
+      if (prop === "tea") {
+        const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.3, 0.62, 18), matte(0xe7dfcf));
+        cup.position.set(x, 1.0, 3.42);
+        cup.castShadow = true;
+        scene.add(cup);
+        const handle = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.055, 8, 18, Math.PI * 1.55), matte(0xe7dfcf));
+        handle.position.set(x + 0.34, 1.03, 3.42);
+        handle.rotation.y = Math.PI / 2;
+        scene.add(handle);
+      }
+      if (prop === "flowers") {
+        const vase = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.34, 0.72, 16), matte(0xbca184));
+        vase.position.set(x, 0.99, 3.48);
+        vase.castShadow = true;
+        scene.add(vase);
+        for (let stem = -1; stem <= 1; stem += 1) {
+          const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.8 + Math.abs(stem) * 0.1, 7), matte(0x6d8878));
+          stalk.position.set(x + stem * 0.13, 1.63, 3.48);
+          stalk.rotation.z = stem * 0.16;
+          scene.add(stalk);
+          const bloom = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 7), matte(stem === 0 ? 0xd5b28f : 0xe4d1b9));
+          bloom.position.set(x + stem * 0.2, 2.03 + Math.abs(stem) * 0.08, 3.48);
+          scene.add(bloom);
+        }
+      }
+    });
+
     const plant = new THREE.Group();
     plant.position.set(-4.8, 0, 3.1);
     scene.add(plant);
@@ -233,7 +287,7 @@ export function CharacterRoomDemo({ characterName }: { characterName: string }) 
     leftArm.geometry.translate(0, -0.3, 0);
     rightArm.geometry.translate(0, -0.3, 0);
 
-    const waypoints: Record<Activity, THREE.Vector3> = {
+    const waypoints: Record<ResidenceActivity, THREE.Vector3> = {
       sleep: new THREE.Vector3(-3.65, 0.86, -2.48),
       work: new THREE.Vector3(2.45, 0, -1.85),
       read: new THREE.Vector3(-3.9, 0, 0.55),
@@ -299,42 +353,154 @@ export function CharacterRoomDemo({ characterName }: { characterName: string }) 
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, [characterName]);
+  }, [characterName, residence]);
 
-  const greet = () => {
-    if (activity === "sleep") {
-      setReply("她把被子往上拉了拉：三更半夜不打招呼。明早再来。");
-      return;
-    }
-    if (activity === "away") {
-      setReply("门没有开。她现在不在家，也许在上班，或是出去买菜了。");
-      return;
-    }
-    waveUntil.current = performance.now() + 2_600;
-    setReply(`她停下手里的事，向你挥了挥手：“你好。”`);
+  useEffect(() => () => {
+    const audio = ambientAudio.current;
+    if (!audio) return;
+    window.clearInterval(audio.interval);
+    audio.oscillators.forEach((oscillator) => {
+      try { oscillator.stop(); } catch { /* already stopped */ }
+    });
+    void audio.context.close();
+  }, []);
+
+  const stopAmbient = () => {
+    const audio = ambientAudio.current;
+    if (!audio) return;
+    window.clearInterval(audio.interval);
+    const now = audio.context.currentTime;
+    audio.master.gain.cancelScheduledValues(now);
+    audio.master.gain.setValueAtTime(audio.master.gain.value, now);
+    audio.master.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
+    window.setTimeout(() => {
+      audio.oscillators.forEach((oscillator) => {
+        try { oscillator.stop(); } catch { /* already stopped */ }
+      });
+      void audio.context.close();
+    }, 560);
+    ambientAudio.current = null;
+    setMusicOn(false);
   };
 
+  const startAmbient = async () => {
+    try {
+      const context = new AudioContext();
+      await context.resume();
+      const master = context.createGain();
+      master.gain.setValueAtTime(0.0001, context.currentTime);
+      master.gain.exponentialRampToValueAtTime(0.055, context.currentTime + 1.4);
+      master.connect(context.destination);
+
+      const filter = context.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.value = 920;
+      filter.Q.value = 0.6;
+      filter.connect(master);
+
+      const oscillators = [174.61, 220, 261.63].map((frequency, index) => {
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        oscillator.type = index === 1 ? "triangle" : "sine";
+        oscillator.frequency.value = frequency;
+        oscillator.detune.value = index * 3 - 3;
+        gain.gain.value = index === 1 ? 0.12 : 0.08;
+        oscillator.connect(gain).connect(filter);
+        oscillator.start();
+        return oscillator;
+      });
+
+      const notes = [349.23, 392, 440, 523.25, 587.33];
+      const playChime = () => {
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        const now = context.currentTime;
+        oscillator.type = "sine";
+        oscillator.frequency.value = notes[Math.floor(Math.random() * notes.length)];
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.14, now + 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.6);
+        oscillator.connect(gain).connect(filter);
+        oscillator.start(now);
+        oscillator.stop(now + 2.7);
+      };
+      playChime();
+      const interval = window.setInterval(playChime, 3_600);
+      ambientAudio.current = { context, master, interval, oscillators };
+      setMusicOn(true);
+    } catch {
+      setReply(siteCopy.residence.audioUnavailable);
+    }
+  };
+
+  const toggleAmbient = () => {
+    if (musicOn) stopAmbient();
+    else void startAmbient();
+  };
+
+  const greet = () => {
+    const replies = {
+      ...siteCopy.residence.replies,
+      ...residence?.greetingReplies,
+    } as Record<ResidenceActivity, readonly string[]>;
+    if (activity !== "sleep" && activity !== "away") {
+      waveUntil.current = performance.now() + 2_600;
+    }
+    setReply(chooseResidenceReply(activity, replies));
+  };
+
+  const activityDisplay = siteCopy.residence.activities[activity];
+
   return (
-    <section className="room-section" aria-labelledby="room-title">
-      <div className="room-intro" data-global-parallax="5">
-        <p className="section-index">02 / LIVING INTERIOR</p>
-        <h2 id="room-title">生活内视图</h2>
-        <p>角色不由访客操控。她会按照时间与随机事件，在房间、工作地点和日常事务之间自行行动。</p>
+    <section className="residence-section" aria-labelledby="residence-title">
+      <div className="residence-intro" data-global-parallax="5">
+        <p className="section-index">{siteCopy.residence.eyebrow}</p>
+        <h2 id="residence-title">{siteCopy.residence.title}</h2>
+        <p>{siteCopy.residence.intro}</p>
       </div>
 
-      <div className="room-simulation">
-        <div className="room-canvas" ref={mount} data-cursor-focus />
-        <div className="room-hud">
-          <div className="room-status">
-            <span>{clock ? formatTime(clock) : "--:--"} · {activityCopy[activity].zh}</span>
-            <small>{activityCopy[activity].en}</small>
+      <div className="residence-board">
+        <span className="board-pin board-pin-a" aria-hidden="true" />
+        <span className="board-pin board-pin-b" aria-hidden="true" />
+        <span className="board-pin board-pin-c" aria-hidden="true" />
+
+        <div className="residence-window">
+          <div className="residence-canvas" ref={mount} data-cursor-focus />
+          <div className="window-glare" aria-hidden="true" />
+          <div className="residence-view-hint" aria-hidden="true">{siteCopy.residence.watchHint}</div>
+        </div>
+
+        <button
+          className="residence-music"
+          type="button"
+          onClick={toggleAmbient}
+          aria-pressed={musicOn}
+          aria-label={musicOn ? siteCopy.residence.ambientOff : siteCopy.residence.ambientOn}
+        >
+          <span className="music-bars" aria-hidden="true"><i /><i /><i /></span>
+          <span>{musicOn ? siteCopy.residence.ambientOff : siteCopy.residence.ambientOn}</span>
+          <small>{siteCopy.residence.ambientEn}</small>
+        </button>
+
+        <div className="residence-status-note">
+          <span className="residence-mood" data-activity={activity} aria-hidden="true">
+            {activityDisplay.mood}
+          </span>
+          <div>
+            <span>{clock ? formatTime(clock) : "--:--"} · {activityDisplay.zh}</span>
+            <small>{activityDisplay.en}</small>
           </div>
-          <p className="room-reply" aria-live="polite">{reply}</p>
-          <button className="room-greet" type="button" onClick={greet}>
-            <span>向她打招呼</span><small>SAY HI</small>
+        </div>
+
+        <div className="residence-dialogue">
+          <p aria-live="polite">{reply}</p>
+          <button className="residence-greet" type="button" onClick={greet}>
+            <span aria-hidden="true">⌁</span>
+            <span>{siteCopy.residence.greet}<small>{siteCopy.residence.greetEn}</small></span>
           </button>
         </div>
-        <div className="room-view-hint" aria-hidden="true">拖动查看房间 · DRAG TO LOOK</div>
+
+        <span className="board-caption" aria-hidden="true">OBSERVATION WINDOW · 001</span>
       </div>
     </section>
   );
