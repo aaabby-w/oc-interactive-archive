@@ -6,22 +6,76 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type {
   CharacterResidence,
   ResidenceActivity,
-  ResidenceProp,
 } from "@/content/characters/types";
 import { siteCopy } from "@/content/site";
 import {
-  chooseResidenceActivity,
   chooseResidenceReply,
+  getResidenceActivityAt,
 } from "@/lib/residence-state";
+import {
+  createResidenceWeather,
+  getWeatherSceneKey,
+  restoreResidenceWeather,
+  type ResidenceWeather,
+} from "@/lib/residence-weather";
+
+type RainLayer = {
+  source: AudioBufferSourceNode;
+  gain: GainNode;
+};
 
 type AmbientAudio = {
   context: AudioContext;
   master: GainNode;
-  interval: number;
-  oscillators: OscillatorNode[];
+  track: HTMLAudioElement;
+  onEnded: () => void;
+  rain: RainLayer | null;
 };
 
-const residenceProps: ResidenceProp[] = ["camera", "books", "journal", "tea", "flowers"];
+const musicTracks = ["/audio/overworld.mp3", "/audio/calm-loop.mp3"];
+
+function stopRainLayer(audio: AmbientAudio) {
+  if (!audio.rain) return;
+  const rain = audio.rain;
+  const now = audio.context.currentTime;
+  rain.gain.gain.cancelScheduledValues(now);
+  rain.gain.gain.setValueAtTime(rain.gain.gain.value, now);
+  rain.gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
+  window.setTimeout(() => {
+    try { rain.source.stop(); } catch { /* already stopped */ }
+  }, 500);
+  audio.rain = null;
+}
+
+function startRainLayer(audio: AmbientAudio, storm = false) {
+  if (audio.rain) {
+    const now = audio.context.currentTime;
+    audio.rain.gain.gain.cancelScheduledValues(now);
+    audio.rain.gain.gain.linearRampToValueAtTime(storm ? 0.12 : 0.075, now + 0.4);
+    return;
+  }
+
+  const seconds = 2;
+  const buffer = audio.context.createBuffer(1, audio.context.sampleRate * seconds, audio.context.sampleRate);
+  const channel = buffer.getChannelData(0);
+  for (let index = 0; index < channel.length; index += 1) {
+    channel[index] = Math.random() * 2 - 1;
+  }
+
+  const source = audio.context.createBufferSource();
+  const filter = audio.context.createBiquadFilter();
+  const gain = audio.context.createGain();
+  source.buffer = buffer;
+  source.loop = true;
+  filter.type = "bandpass";
+  filter.frequency.value = storm ? 980 : 1280;
+  filter.Q.value = 0.35;
+  gain.gain.value = 0.0001;
+  source.connect(filter).connect(gain).connect(audio.master);
+  source.start();
+  gain.gain.exponentialRampToValueAtTime(storm ? 0.12 : 0.075, audio.context.currentTime + 1.2);
+  audio.rain = { source, gain };
+}
 
 function formatTime(date: Date) {
   return new Intl.DateTimeFormat("zh-CN", {
@@ -32,37 +86,74 @@ function formatTime(date: Date) {
 }
 
 export function CharacterRoomDemo({
+  characterId,
   characterName,
   residence,
 }: {
+  characterId: string;
   characterName: string;
   residence?: CharacterResidence;
 }) {
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
   const mount = useRef<HTMLDivElement>(null);
   const activityRef = useRef<ResidenceActivity>("idle");
+  const weatherRef = useRef<ResidenceWeather>("clear");
+  const nightRef = useRef(false);
   const waveUntil = useRef(0);
   const ambientAudio = useRef<AmbientAudio | null>(null);
   const [clock, setClock] = useState<Date | null>(null);
   const [activity, setActivity] = useState<ResidenceActivity>("idle");
+  const [weather, setWeather] = useState<ResidenceWeather>("clear");
   const [musicOn, setMusicOn] = useState(false);
   const [reply, setReply] = useState<string>(siteCopy.residence.defaultReply);
 
   useEffect(() => {
-    const selectNextActivity = () => {
-      const next = chooseResidenceActivity(new Date().getHours(), activityRef.current);
+    const syncResidence = () => {
+      const now = new Date();
+      const next = getResidenceActivityAt(now, characterId);
+      setClock(now);
+      nightRef.current = now.getHours() < 6 || now.getHours() >= 19;
       activityRef.current = next;
       setActivity(next);
     };
 
-    setClock(new Date());
-    selectNextActivity();
-    const clockTimer = window.setInterval(() => setClock(new Date()), 30_000);
-    const activityTimer = window.setInterval(selectNextActivity, 14_000);
+    syncResidence();
+    const clockTimer = window.setInterval(syncResidence, 30_000);
     return () => {
       window.clearInterval(clockTimer);
-      window.clearInterval(activityTimer);
     };
-  }, []);
+  }, [characterId]);
+
+  useEffect(() => {
+    const storageKey = `oc-residence-weather:${characterId}`;
+    const syncWeather = () => {
+      const now = Date.now();
+      let stored: ReturnType<typeof restoreResidenceWeather> = null;
+      try {
+        stored = restoreResidenceWeather(window.localStorage.getItem(storageKey), now);
+      } catch {
+        stored = null;
+      }
+      const next = stored ?? createResidenceWeather(now);
+      if (!stored) {
+        try { window.localStorage.setItem(storageKey, JSON.stringify(next)); } catch { /* storage unavailable */ }
+      }
+      weatherRef.current = next.kind;
+      setWeather(next.kind);
+    };
+
+    syncWeather();
+    const weatherTimer = window.setInterval(syncWeather, 30_000);
+    return () => window.clearInterval(weatherTimer);
+  }, [characterId]);
+
+  useEffect(() => {
+    weatherRef.current = weather;
+    const audio = ambientAudio.current;
+    if (!audio) return;
+    if (weather === "rain" || weather === "storm") startRainLayer(audio, weather === "storm");
+    else stopRainLayer(audio);
+  }, [weather]);
 
   useEffect(() => {
     const container = mount.current;
@@ -70,14 +161,14 @@ export function CharacterRoomDemo({
 
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xbecbc2);
-    scene.fog = new THREE.Fog(0xbecbc2, 10, 22);
+    scene.background = new THREE.Color(0xcfe1d7);
+    scene.fog = new THREE.Fog(0xcfe1d7, 11, 24);
 
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 60);
     camera.position.set(8.8, 6.6, 10.8);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false });
+    renderer.setPixelRatio(1);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -105,7 +196,7 @@ export function CharacterRoomDemo({
     sun.shadow.camera.bottom = -8;
     scene.add(sun);
 
-    const matte = (color: number) => new THREE.MeshStandardMaterial({ color, roughness: 0.86, metalness: 0.02 });
+    const matte = (color: number) => new THREE.MeshToonMaterial({ color });
     const addBox = (
       size: [number, number, number],
       position: [number, number, number],
@@ -131,9 +222,67 @@ export function CharacterRoomDemo({
     windowFrame.position.set(1.6, 2.7, -4.34);
     scene.add(windowFrame);
     addBox([4.1, 2.45, 0.06], [0, 0, 0], 0xa9c4ba, windowFrame);
-    addBox([3.72, 2.08, 0.08], [0, 0, 0.02], 0xdcece9, windowFrame);
+    const windowPane = addBox([3.72, 2.08, 0.08], [0, 0, 0.02], 0xdcece9, windowFrame);
     addBox([0.08, 2.2, 0.12], [0, 0, 0.08], 0x718f83, windowFrame);
     addBox([3.85, 0.08, 0.12], [0, 0, 0.08], 0x718f83, windowFrame);
+
+    const weatherScene = new THREE.Group();
+    weatherScene.position.z = 0.13;
+    windowFrame.add(weatherScene);
+
+    const sunGroup = new THREE.Group();
+    sunGroup.position.set(1.22, 0.48, 0);
+    weatherScene.add(sunGroup);
+    addBox([0.34, 0.34, 0.04], [0, 0, 0], 0xffd88c, sunGroup);
+    [[0, 0.34], [0, -0.34], [0.34, 0], [-0.34, 0]].forEach(([x, y]) => {
+      addBox([0.08, 0.16, 0.035], [x, y, 0], 0xffd88c, sunGroup);
+    });
+
+    const moonGroup = new THREE.Group();
+    moonGroup.position.set(1.2, 0.48, 0);
+    weatherScene.add(moonGroup);
+    addBox([0.38, 0.38, 0.04], [0, 0, 0], 0xf5edc8, moonGroup);
+    addBox([0.25, 0.3, 0.055], [0.13, 0.08, 0.01], 0x738ea0, moonGroup);
+
+    const cloudGroup = new THREE.Group();
+    cloudGroup.position.set(-0.2, 0.38, 0.04);
+    weatherScene.add(cloudGroup);
+    [[-0.46, 0, 0.62, 0.25], [0, 0.08, 0.86, 0.36], [0.5, -0.02, 0.54, 0.24]].forEach(([x, y, width, height]) => {
+      addBox([width, height, 0.05], [x, y, 0], 0xe9eee6, cloudGroup);
+    });
+
+    const rainGroup = new THREE.Group();
+    rainGroup.position.z = 0.05;
+    weatherScene.add(rainGroup);
+    for (let drop = 0; drop < 24; drop += 1) {
+      const streak = addBox([0.025, 0.22, 0.025], [0, 0, 0], 0x8cb7c4, rainGroup);
+      streak.userData.seedX = -1.7 + (drop * 0.73 % 3.4);
+      streak.userData.seedY = -0.92 + (drop * 0.43 % 1.84);
+      streak.position.x = streak.userData.seedX;
+      streak.position.y = streak.userData.seedY;
+      streak.rotation.z = -0.18;
+    }
+
+    const lightningGroup = new THREE.Group();
+    lightningGroup.position.set(0.62, 0.12, 0.09);
+    weatherScene.add(lightningGroup);
+    const boltA = addBox([0.1, 0.62, 0.05], [0, 0.18, 0], 0xffedb1, lightningGroup);
+    boltA.rotation.z = -0.35;
+    const boltB = addBox([0.1, 0.54, 0.05], [-0.12, -0.28, 0], 0xffedb1, lightningGroup);
+    boltB.rotation.z = 0.42;
+
+    const rainbowGroup = new THREE.Group();
+    rainbowGroup.position.set(0.28, -0.42, 0.08);
+    weatherScene.add(rainbowGroup);
+    [0xdba6a2, 0xe4c890, 0x91b9a9, 0xa8aecb].forEach((color, index) => {
+      const arc = new THREE.Mesh(
+        new THREE.TorusGeometry(0.75 - index * 0.11, 0.035, 4, 18, Math.PI),
+        new THREE.MeshToonMaterial({ color, transparent: true, opacity: 0.54 }),
+      );
+      arc.rotation.z = Math.PI;
+      arc.position.y = index * -0.025;
+      rainbowGroup.add(arc);
+    });
 
     addBox([3.5, 0.45, 2.05], [-3.65, 0.35, -2.55], 0x879f94);
     addBox([3.3, 0.3, 1.88], [-3.65, 0.72, -2.55], 0xe7e3d3);
@@ -160,7 +309,7 @@ export function CharacterRoomDemo({
       }
     }
 
-    const rug = new THREE.Mesh(new THREE.CircleGeometry(2.15, 40), matte(0x9db7ac));
+    const rug = new THREE.Mesh(new THREE.CircleGeometry(2.15, 16), matte(0x9db7ac));
     rug.rotation.x = -Math.PI / 2;
     rug.scale.y = 0.66;
     rug.position.set(0.4, 0.012, 0.35);
@@ -172,70 +321,16 @@ export function CharacterRoomDemo({
     doorKnob.position.set(5.48, 1.12, -1.31);
     scene.add(doorKnob);
 
-    const foregroundTable = addBox([11.8, 0.42, 1.7], [0, 0.42, 3.55], 0xa98261);
-    foregroundTable.receiveShadow = true;
-    const configuredProps = residence?.representativeItems?.length
-      ? residence.representativeItems
-      : [...residenceProps].sort(() => Math.random() - 0.5).slice(0, 3);
-    const propPositions = [-3.15, 0, 3.15];
-
-    configuredProps.slice(0, 3).forEach((prop, index) => {
-      const x = propPositions[index];
-      if (prop === "camera") {
-        addBox([1.18, 0.72, 0.52], [x, 0.95, 3.35], 0x403d38);
-        const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.34, 0.32, 20), matte(0x1f2422));
-        lens.position.set(x, 0.95, 3.04);
-        lens.rotation.x = Math.PI / 2;
-        lens.castShadow = true;
-        scene.add(lens);
-      }
-      if (prop === "books") {
-        addBox([1.75, 0.22, 0.92], [x, 0.77, 3.5], 0x718c80).rotation.y = -0.08;
-        addBox([1.55, 0.2, 0.82], [x + 0.12, 0.99, 3.48], 0xc9a981).rotation.y = 0.08;
-      }
-      if (prop === "journal") {
-        const journal = addBox([1.48, 0.16, 1.05], [x, 0.73, 3.42], 0x485b52);
-        journal.rotation.y = -0.22;
-        addBox([0.06, 0.04, 0.78], [x, 0.84, 3.38], 0xc9aa72).rotation.y = -0.22;
-      }
-      if (prop === "tea") {
-        const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.3, 0.62, 18), matte(0xe7dfcf));
-        cup.position.set(x, 1.0, 3.42);
-        cup.castShadow = true;
-        scene.add(cup);
-        const handle = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.055, 8, 18, Math.PI * 1.55), matte(0xe7dfcf));
-        handle.position.set(x + 0.34, 1.03, 3.42);
-        handle.rotation.y = Math.PI / 2;
-        scene.add(handle);
-      }
-      if (prop === "flowers") {
-        const vase = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.34, 0.72, 16), matte(0xbca184));
-        vase.position.set(x, 0.99, 3.48);
-        vase.castShadow = true;
-        scene.add(vase);
-        for (let stem = -1; stem <= 1; stem += 1) {
-          const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.8 + Math.abs(stem) * 0.1, 7), matte(0x6d8878));
-          stalk.position.set(x + stem * 0.13, 1.63, 3.48);
-          stalk.rotation.z = stem * 0.16;
-          scene.add(stalk);
-          const bloom = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 7), matte(stem === 0 ? 0xd5b28f : 0xe4d1b9));
-          bloom.position.set(x + stem * 0.2, 2.03 + Math.abs(stem) * 0.08, 3.48);
-          scene.add(bloom);
-        }
-      }
-    });
-
     const plant = new THREE.Group();
     plant.position.set(-4.8, 0, 3.1);
     scene.add(plant);
-    const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.3, 0.65, 16), matte(0xa8876c));
+    const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.3, 0.65, 8), matte(0xa8876c));
     pot.position.y = 0.32;
     pot.castShadow = true;
     plant.add(pot);
     for (let leaf = 0; leaf < 5; leaf += 1) {
-      const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 8), matte(0x658875));
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.58, 0.2), matte(0x658875));
       const angle = leaf / 5 * Math.PI * 2;
-      mesh.scale.set(0.55, 1.4, 0.45);
       mesh.position.set(Math.cos(angle) * 0.28, 0.92 + (leaf % 2) * 0.2, Math.sin(angle) * 0.28);
       mesh.rotation.z = Math.cos(angle) * 0.5;
       mesh.castShadow = true;
@@ -245,18 +340,12 @@ export function CharacterRoomDemo({
     const cat = new THREE.Group();
     cat.position.set(1.15, 0.24, 1.25);
     scene.add(cat);
-    const catBody = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 12), matte(0x6b665f));
-    catBody.scale.set(1.25, 0.75, 0.72);
-    catBody.castShadow = true;
-    cat.add(catBody);
-    const catHead = new THREE.Mesh(new THREE.SphereGeometry(0.24, 16, 12), matte(0x76716a));
-    catHead.position.set(0.4, 0.16, 0);
-    catHead.castShadow = true;
-    cat.add(catHead);
-    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 0.8, 10), matte(0x6b665f));
-    tail.position.set(-0.47, 0.25, 0);
+    addBox([0.72, 0.34, 0.4], [0, 0, 0], 0x6b665f, cat);
+    addBox([0.38, 0.4, 0.38], [0.45, 0.18, 0], 0x76716a, cat);
+    addBox([0.11, 0.2, 0.1], [0.34, 0.47, -0.1], 0x76716a, cat).rotation.z = -0.32;
+    addBox([0.11, 0.2, 0.1], [0.55, 0.47, -0.1], 0x76716a, cat).rotation.z = 0.32;
+    const tail = addBox([0.08, 0.72, 0.08], [-0.47, 0.25, 0], 0x6b665f, cat);
     tail.rotation.z = -0.95;
-    cat.add(tail);
 
     const character = new THREE.Group();
     scene.add(character);
@@ -269,19 +358,20 @@ export function CharacterRoomDemo({
     const bodyMaterial = matte(0x809f92);
     const dayOutfit = new THREE.Color(0x809f92);
     const sleepOutfit = new THREE.Color(0x9eabb3);
-    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.42, 0.72, 6, 12), bodyMaterial);
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.86, 1.16, 0.5), bodyMaterial);
     body.position.y = 1.22;
     body.castShadow = true;
     figure.add(body);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.39, 20, 16), matte(0xd9bda5));
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.68, 0.62), matte(0xd9bda5));
     head.position.y = 2.08;
     head.castShadow = true;
     figure.add(head);
-    const hair = new THREE.Mesh(new THREE.SphereGeometry(0.42, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.62), matte(0x3b3936));
-    hair.position.set(0, 2.19, -0.02);
-    hair.rotation.x = -0.18;
+    const hair = new THREE.Mesh(new THREE.BoxGeometry(0.76, 0.36, 0.68), matte(0x3b3936));
+    hair.position.set(0, 2.36, -0.02);
     hair.castShadow = true;
     figure.add(hair);
+    addBox([0.14, 0.14, 0.06], [-0.16, 2.1, 0.33], 0x354841, figure);
+    addBox([0.14, 0.14, 0.06], [0.16, 2.1, 0.33], 0x354841, figure);
     const leftArm = addBox([0.18, 0.8, 0.22], [-0.54, 1.35, 0], 0x809f92, figure);
     const rightArm = addBox([0.18, 0.8, 0.22], [0.54, 1.35, 0], 0x809f92, figure);
     leftArm.geometry.translate(0, -0.3, 0);
@@ -298,13 +388,22 @@ export function CharacterRoomDemo({
 
     character.position.copy(waypoints.idle);
     const startedAt = performance.now();
+    const skyColors = {
+      day: new THREE.Color(0xbfe1dc),
+      night: new THREE.Color(0x6f8698),
+      cloudy: new THREE.Color(0xb7c8c3),
+      rain: new THREE.Color(0x8ba8ae),
+      storm: new THREE.Color(0x60747e),
+      rainbow: new THREE.Color(0xd3dfd1),
+    };
     let animationFrame = 0;
 
     const resize = () => {
       const width = container.clientWidth;
       const height = container.clientHeight;
       if (!width || !height) return;
-      renderer.setSize(width, height, false);
+      const pixelScale = width < 760 ? 0.48 : 0.62;
+      renderer.setSize(Math.round(width * pixelScale), Math.round(height * pixelScale), false);
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
     };
@@ -315,6 +414,8 @@ export function CharacterRoomDemo({
     const animate = () => {
       const elapsed = (performance.now() - startedAt) / 1000;
       const current = activityRef.current;
+      const currentWeather = weatherRef.current;
+      const night = nightRef.current;
       const targetPosition = waypoints[current];
       character.position.lerp(targetPosition, reduceMotion ? 1 : 0.018);
       character.visible = current !== "away" || character.position.distanceTo(targetPosition) > 0.28;
@@ -334,6 +435,26 @@ export function CharacterRoomDemo({
       leftArm.rotation.z = THREE.MathUtils.lerp(leftArm.rotation.z, current === "work" ? 0.7 : 0, 0.08);
       cat.position.x = 1.15 + Math.sin(elapsed * 0.34) * 0.28;
       tail.rotation.z = -0.95 + Math.sin(elapsed * 2.4) * 0.22;
+
+      const raining = currentWeather === "rain" || currentWeather === "storm";
+      sunGroup.visible = currentWeather === "clear" && !night;
+      moonGroup.visible = currentWeather === "clear" && night;
+      cloudGroup.visible = currentWeather === "cloudy" || raining || currentWeather === "rainbow";
+      rainGroup.visible = raining;
+      rainbowGroup.visible = currentWeather === "rainbow";
+      lightningGroup.visible = currentWeather === "storm" && Math.sin(elapsed * 2.7) > 0.94;
+      sunGroup.rotation.z = elapsed * 0.08;
+      cloudGroup.position.x = -0.2 + Math.sin(elapsed * 0.16) * 0.16;
+      rainGroup.children.forEach((drop) => {
+        const speed = currentWeather === "storm" ? 1.45 : 0.88;
+        drop.position.y = 0.94 - ((elapsed * speed + drop.userData.seedY + 2) % 1.9);
+      });
+
+      const skyTarget = currentWeather === "clear"
+        ? night ? skyColors.night : skyColors.day
+        : skyColors[currentWeather];
+      windowPane.material.color.lerp(skyTarget, 0.045);
+      sun.intensity = THREE.MathUtils.lerp(sun.intensity, night ? 1.7 : raining ? 2.1 : 3.4, 0.025);
       controls.update();
       renderer.render(scene, camera);
       animationFrame = window.requestAnimationFrame(animate);
@@ -353,30 +474,33 @@ export function CharacterRoomDemo({
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, [characterName, residence]);
+  }, [characterName]);
 
   useEffect(() => () => {
     const audio = ambientAudio.current;
     if (!audio) return;
-    window.clearInterval(audio.interval);
-    audio.oscillators.forEach((oscillator) => {
-      try { oscillator.stop(); } catch { /* already stopped */ }
-    });
+    audio.track.removeEventListener("ended", audio.onEnded);
+    audio.track.pause();
+    if (audio.rain) {
+      try { audio.rain.source.stop(); } catch { /* already stopped */ }
+    }
     void audio.context.close();
+    ambientAudio.current = null;
   }, []);
 
   const stopAmbient = () => {
     const audio = ambientAudio.current;
     if (!audio) return;
-    window.clearInterval(audio.interval);
+    audio.track.removeEventListener("ended", audio.onEnded);
+    stopRainLayer(audio);
     const now = audio.context.currentTime;
     audio.master.gain.cancelScheduledValues(now);
     audio.master.gain.setValueAtTime(audio.master.gain.value, now);
     audio.master.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
     window.setTimeout(() => {
-      audio.oscillators.forEach((oscillator) => {
-        try { oscillator.stop(); } catch { /* already stopped */ }
-      });
+      audio.track.pause();
+      audio.track.removeAttribute("src");
+      audio.track.load();
       void audio.context.close();
     }, 560);
     ambientAudio.current = null;
@@ -389,46 +513,38 @@ export function CharacterRoomDemo({
       await context.resume();
       const master = context.createGain();
       master.gain.setValueAtTime(0.0001, context.currentTime);
-      master.gain.exponentialRampToValueAtTime(0.055, context.currentTime + 1.4);
+      master.gain.exponentialRampToValueAtTime(0.18, context.currentTime + 1.4);
       master.connect(context.destination);
 
-      const filter = context.createBiquadFilter();
-      filter.type = "lowpass";
-      filter.frequency.value = 920;
-      filter.Q.value = 0.6;
-      filter.connect(master);
-
-      const oscillators = [174.61, 220, 261.63].map((frequency, index) => {
-        const oscillator = context.createOscillator();
-        const gain = context.createGain();
-        oscillator.type = index === 1 ? "triangle" : "sine";
-        oscillator.frequency.value = frequency;
-        oscillator.detune.value = index * 3 - 3;
-        gain.gain.value = index === 1 ? 0.12 : 0.08;
-        oscillator.connect(gain).connect(filter);
-        oscillator.start();
-        return oscillator;
-      });
-
-      const notes = [349.23, 392, 440, 523.25, 587.33];
-      const playChime = () => {
-        const oscillator = context.createOscillator();
-        const gain = context.createGain();
-        const now = context.currentTime;
-        oscillator.type = "sine";
-        oscillator.frequency.value = notes[Math.floor(Math.random() * notes.length)];
-        gain.gain.setValueAtTime(0.0001, now);
-        gain.gain.exponentialRampToValueAtTime(0.14, now + 0.08);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.6);
-        oscillator.connect(gain).connect(filter);
-        oscillator.start(now);
-        oscillator.stop(now + 2.7);
+      const sources = musicTracks.map((path) => `${basePath}${path}`);
+      const track = new Audio();
+      track.preload = "auto";
+      let trackIndex = Math.floor(Math.random() * sources.length);
+      const playTrack = () => {
+        track.src = sources[trackIndex];
+        trackIndex = (trackIndex + 1) % sources.length;
+        void track.play().catch(() => setReply(siteCopy.residence.audioUnavailable));
       };
-      playChime();
-      const interval = window.setInterval(playChime, 3_600);
-      ambientAudio.current = { context, master, interval, oscillators };
+      const onEnded = () => playTrack();
+      track.addEventListener("ended", onEnded);
+      context.createMediaElementSource(track).connect(master);
+
+      const audio: AmbientAudio = { context, master, track, onEnded, rain: null };
+      ambientAudio.current = audio;
+      if (weatherRef.current === "rain" || weatherRef.current === "storm") {
+        startRainLayer(audio, weatherRef.current === "storm");
+      }
+      track.src = sources[trackIndex];
+      trackIndex = (trackIndex + 1) % sources.length;
+      await track.play();
       setMusicOn(true);
     } catch {
+      const audio = ambientAudio.current;
+      if (audio) {
+        audio.track.pause();
+        void audio.context.close();
+        ambientAudio.current = null;
+      }
       setReply(siteCopy.residence.audioUnavailable);
     }
   };
@@ -450,6 +566,8 @@ export function CharacterRoomDemo({
   };
 
   const activityDisplay = siteCopy.residence.activities[activity];
+  const weatherSceneKey = clock ? getWeatherSceneKey(weather, clock) : "clear-day";
+  const weatherDisplay = siteCopy.residence.weather[weatherSceneKey];
 
   return (
     <section className="residence-section" aria-labelledby="residence-title">
@@ -468,6 +586,10 @@ export function CharacterRoomDemo({
           <div className="residence-canvas" ref={mount} data-cursor-focus />
           <div className="window-glare" aria-hidden="true" />
           <div className="residence-view-hint" aria-hidden="true">{siteCopy.residence.watchHint}</div>
+          <div className="residence-weather-badge" data-weather={weatherSceneKey}>
+            <span aria-hidden="true"><i /><i /><i /></span>
+            <div><b>{weatherDisplay.zh}</b><small>{weatherDisplay.en}</small></div>
+          </div>
         </div>
 
         <button

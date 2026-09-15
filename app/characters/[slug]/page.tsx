@@ -2,6 +2,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CharacterRoomDemo } from "@/components/character-room-demo";
+import {
+  CharacterArchiveGateway,
+  CharacterShowcase,
+} from "@/components/character-profile-sections";
 import { SiteHeader } from "@/components/site-header";
 import { getCharacterBySlug, getPublishedCharacters } from "@/content/characters/registry";
 import { siteCopy } from "@/content/site";
@@ -60,7 +64,10 @@ export default async function CharacterPage({ params }: CharacterPageProps) {
           <span aria-hidden="true">←</span> {siteCopy.common.back}
         </Link>
       </section>
+      <CharacterShowcase character={entry.character} />
+      <CharacterArchiveGateway character={entry.character} />
       <CharacterRoomDemo
+        characterId={entry.character.slug}
         characterName={entry.character.displayName.zh}
         residence={entry.character.residence}
       />

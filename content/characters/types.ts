@@ -7,6 +7,14 @@ export type CharacterMedia = {
   portrait?: string;
   portraitAlt?: string;
   focalPoint?: `${number}% ${number}%`;
+  gallery?: CharacterGalleryItem[];
+};
+
+export type CharacterGalleryItem = {
+  src: string;
+  alt: string;
+  format: "full" | "portrait" | "landscape";
+  focalPoint?: `${number}% ${number}%`;
 };
 
 export type CharacterModules = {
@@ -21,10 +29,7 @@ export type CharacterModules = {
 
 export type ResidenceActivity = "sleep" | "work" | "read" | "cat" | "idle" | "away";
 
-export type ResidenceProp = "camera" | "books" | "journal" | "tea" | "flowers";
-
 export type CharacterResidence = {
-  representativeItems?: ResidenceProp[];
   greetingReplies?: Partial<Record<ResidenceActivity, string[]>>;
 };
 

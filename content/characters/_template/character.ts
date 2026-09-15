@@ -12,10 +12,10 @@ export const characterTemplate: Character = {
     portrait: undefined,
     portraitAlt: undefined,
     focalPoint: "50% 35%",
+    gallery: [],
   },
   modules: {},
   residence: {
-    representativeItems: [],
     greetingReplies: {},
   },
 };

@@ -4,7 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { Switch } from "@/components/ui/switch";
+import { Settings2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { siteCopy } from "@/content/site";
 
 type TiltPermission = "unknown" | "granted" | "denied" | "unsupported";
 
@@ -28,9 +37,11 @@ function setMotion(x: number, y: number) {
 export function GlobalAtmosphere() {
   const pathname = usePathname();
   const follower = useRef<HTMLDivElement>(null);
+  const closeTimer = useRef<number | null>(null);
   const [spatialEnabled, setSpatialEnabled] = useState(true);
   const [coarsePointer, setCoarsePointer] = useState(false);
   const [tiltPermission, setTiltPermission] = useState<TiltPermission>("unknown");
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     const isCoarse = window.matchMedia("(pointer: coarse)").matches;
@@ -45,7 +56,7 @@ export function GlobalAtmosphere() {
 
     gsap.registerPlugin(ScrollTrigger);
     const context = gsap.context(() => {
-      if (reduceMotion) return;
+      if (reduceMotion || !spatialEnabled) return;
 
       gsap.utils.toArray<HTMLElement>("[data-global-parallax]").forEach((element) => {
         const amount = Number(element.dataset.globalParallax ?? 8);
@@ -113,6 +124,10 @@ export function GlobalAtmosphere() {
     };
   }, [pathname, spatialEnabled]);
 
+  useEffect(() => () => {
+    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
+  }, []);
+
   useEffect(() => {
     if (!spatialEnabled || tiltPermission !== "granted") return;
 
@@ -164,26 +179,71 @@ export function GlobalAtmosphere() {
   };
 
   const unavailable = tiltPermission === "denied" || tiltPermission === "unsupported";
-  const label = unavailable
-    ? tiltPermission === "denied" ? "视差未授权" : "设备不支持"
-    : spatialEnabled ? "视差开启" : "视差关闭";
+  const stateLabel = unavailable
+    ? tiltPermission === "denied" ? siteCopy.settings.denied : siteCopy.settings.unsupported
+    : spatialEnabled ? siteCopy.settings.enabled : siteCopy.settings.disabled;
+
+  const openSettings = () => {
+    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
+    setSettingsOpen(true);
+  };
+
+  const scheduleClose = () => {
+    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
+    closeTimer.current = window.setTimeout(() => setSettingsOpen(false), 180);
+  };
 
   return (
     <>
       <div className="mouse-follower global-follower" ref={follower} aria-hidden="true">
         <span />
       </div>
-      <div className="spatial-control" data-enabled={spatialEnabled} data-unavailable={unavailable}>
-        <span className="spatial-lens" aria-hidden="true"><i /><i /><b /></span>
-        <span className="spatial-copy"><b>{label}</b><small>DEPTH</small></span>
-        <Switch
-          className="spatial-switch"
-          checked={spatialEnabled}
-          onCheckedChange={changeSpatialMode}
-          disabled={unavailable}
-          aria-label={spatialEnabled ? "关闭页面视差" : "开启页面视差"}
-        />
-      </div>
+      <DropdownMenu open={settingsOpen} onOpenChange={setSettingsOpen} modal={false}>
+        <div
+          className="settings-control"
+          data-open={settingsOpen}
+          onPointerEnter={(event) => {
+            if (event.pointerType === "mouse") openSettings();
+          }}
+          onPointerLeave={(event) => {
+            if (event.pointerType === "mouse") scheduleClose();
+          }}
+        >
+          <DropdownMenuTrigger asChild>
+            <button className="settings-trigger" type="button" aria-label={siteCopy.settings.label}>
+              <Settings2 aria-hidden="true" />
+              <span aria-hidden="true" />
+            </button>
+          </DropdownMenuTrigger>
+        </div>
+        <DropdownMenuContent
+          className="settings-menu"
+          side="top"
+          align="end"
+          sideOffset={10}
+          onPointerEnter={openSettings}
+          onPointerLeave={scheduleClose}
+        >
+          <DropdownMenuLabel className="settings-menu__label">
+            <span>{siteCopy.settings.title}</span>
+            <small>{siteCopy.settings.titleEn}</small>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator className="settings-menu__rule" />
+          <DropdownMenuCheckboxItem
+            className="settings-menu__item"
+            checked={spatialEnabled}
+            disabled={unavailable}
+            onCheckedChange={(checked) => void changeSpatialMode(checked === true)}
+            onSelect={(event) => event.preventDefault()}
+          >
+            <span className="settings-menu__copy">
+              <b>{siteCopy.settings.parallax}</b>
+              <small>{siteCopy.settings.parallaxEn}</small>
+            </span>
+            <em>{stateLabel}</em>
+          </DropdownMenuCheckboxItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </>
   );
 }
