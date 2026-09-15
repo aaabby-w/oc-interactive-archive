@@ -30,13 +30,15 @@ export type CharacterModules = {
 export type ResidenceActivity = "sleep" | "work" | "read" | "cat" | "idle" | "away";
 
 export type PixelResidenceAppearance = {
-  hairStyle?: "ponytail" | "bob" | "short";
+  hairStyle?: "ponytail" | "long" | "bob" | "short";
   hairColor?: number;
   hairHighlight?: number;
+  eyeColor?: number;
   skinColor?: number;
   outfitPrimary?: number;
   outfitSecondary?: number;
   accentColor?: number;
+  neckwear?: "scarf" | "choker";
 };
 
 export type CharacterResidence = {

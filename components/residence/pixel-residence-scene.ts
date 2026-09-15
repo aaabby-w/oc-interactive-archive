@@ -40,6 +40,15 @@ function smooth(current: number, target: number, speed: number) {
   return THREE.MathUtils.lerp(current, target, speed);
 }
 
+function hashString(value: string) {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
 export function mountPixelResidenceScene({
   container,
   characterName,
@@ -212,23 +221,39 @@ export function mountPixelResidenceScene({
     rainbowGroup.add(arc);
   });
 
-  // Bed: striped textile, carved frame, pillow and a blanket that reacts to sleep.
+  // Bed: every visible layer has its own contact plane, so the frame, mattress,
+  // pillows and quilt read as a built object rather than overlapping blocks.
   const bed = new THREE.Group();
   bed.position.set(-3.55, 0, -2.48);
   scene.add(bed);
-  box([3.45, 0.34, 2.0], [0, 0.38, 0], palette.darkestWood, bed);
-  box([3.2, 0.28, 1.82], [0, 0.68, 0], palette.cream, bed);
-  box([3.28, 1.18, 0.18], [0, 1.05, -0.93], palette.wood, bed);
-  for (let slat = -1.25; slat <= 1.25; slat += 0.5) {
-    box([0.18, 0.8, 0.08], [slat, 1.12, -0.82], palette.paleWood, bed);
+  [[-1.53, -0.84], [-1.53, 0.84], [1.53, -0.84], [1.53, 0.84]].forEach(([x, z]) => {
+    box([0.22, 0.56, 0.22], [x, 0.42, z], palette.darkestWood, bed);
+    box([0.3, 0.13, 0.3], [x, 0.17, z], palette.paleWood, bed);
+  });
+  box([3.42, 0.28, 0.16], [0, 0.64, -0.92], palette.darkestWood, bed);
+  box([3.42, 0.28, 0.16], [0, 0.64, 0.92], palette.darkestWood, bed);
+  box([0.18, 1.52, 2.0], [-1.67, 1.1, 0], palette.darkestWood, bed);
+  box([0.14, 1.38, 1.82], [-1.55, 1.12, 0], palette.wood, bed);
+  for (let slat = -0.66; slat <= 0.66; slat += 0.44) {
+    box([0.08, 1.0, 0.14], [-1.46, 1.13, slat], palette.paleWood, bed);
   }
-  const pillow = box([0.92, 0.22, 0.68], [-1.03, 0.91, -0.36], 0xf4eedf, bed);
+  box([0.16, 0.74, 2.0], [1.67, 0.73, 0], palette.darkestWood, bed);
+  box([3.22, 0.34, 1.76], [0, 0.84, 0], palette.creamShade, bed);
+  box([3.08, 0.25, 1.62], [0, 1.04, 0], palette.cream, bed);
+  box([3.11, 0.045, 1.65], [0, 1.19, 0], 0xf7f0dd, bed);
+  const pillow = box([0.86, 0.2, 0.7], [-1.03, 1.31, -0.38], 0xf7f1e2, bed);
+  const secondPillow = box([0.82, 0.18, 0.64], [-1.03, 1.3, 0.39], 0xe5eadf, bed);
+  box([0.72, 0.025, 0.53], [-1.03, 1.415, 0.39], 0xf3eee0, bed);
   const blanket = new THREE.Group();
   bed.add(blanket);
-  box([1.92, 0.2, 1.7], [0.48, 0.9, 0], palette.mint, blanket);
-  for (let stripe = -0.28; stripe <= 1.2; stripe += 0.5) {
-    box([0.18, 0.025, 1.72], [stripe, 1.015, 0], palette.cream, blanket);
+  box([2.12, 0.2, 1.62], [0.46, 1.32, 0], palette.mint, blanket);
+  box([2.08, 0.54, 0.12], [0.46, 1.08, 0.84], 0x6f9f96, blanket);
+  box([0.15, 0.46, 1.62], [1.48, 1.11, 0], 0x65958c, blanket);
+  for (let stripe = -0.28; stripe <= 1.18; stripe += 0.49) {
+    box([0.16, 0.03, 1.64], [stripe, 1.435, 0], palette.cream, blanket);
   }
+  box([2.12, 0.035, 0.08], [0.46, 1.43, -0.78], palette.deepMint, blanket);
+  box([2.12, 0.035, 0.08], [0.46, 1.43, 0.78], palette.deepMint, blanket);
 
   // Desk: drawers, books, paper, task lamp, laptop and a pulled-out chair.
   const desk = new THREE.Group();
@@ -352,63 +377,104 @@ export function mountPixelResidenceScene({
   cylinder(0.08, 0.08, 0.09, [1.18, 1.34, 0.16], 0xd8bd7c, doorPivot).rotation.x = Math.PI / 2;
   door.userData.isDoor = true;
 
-  // A small articulated cat for the petting interaction.
+  // A white articulated cat. Its paws, face and tail are separate so sitting,
+  // loafing and being petted can remain readable at the low render resolution.
   const cat = new THREE.Group();
-  cat.position.set(0.9, 0.31, 1.5);
+  cat.position.set(0.9, 0.42, 1.5);
   scene.add(cat);
-  box([0.8, 0.38, 0.46], [0, 0, 0], 0x706a60, cat);
+  const catBody = box([0.86, 0.38, 0.48], [0, 0, 0], 0xf3eee2, cat);
+  box([0.42, 0.22, 0.5], [-0.3, 0.18, 0], 0xe4dfd4, cat);
   const catHead = new THREE.Group();
-  catHead.position.set(0.49, 0.18, 0);
+  catHead.position.set(0.5, 0.2, 0);
   cat.add(catHead);
-  box([0.42, 0.43, 0.42], [0, 0, 0], 0x81796d, catHead);
-  box([0.14, 0.22, 0.12], [-0.13, 0.29, 0], 0x81796d, catHead).rotation.z = -0.3;
-  box([0.14, 0.22, 0.12], [0.13, 0.29, 0], 0x81796d, catHead).rotation.z = 0.3;
-  box([0.06, 0.06, 0.035], [-0.11, 0.05, 0.23], palette.ink, catHead);
-  box([0.06, 0.06, 0.035], [0.11, 0.05, 0.23], palette.ink, catHead);
+  box([0.48, 0.46, 0.46], [0, 0, 0], 0xf8f3e8, catHead);
+  box([0.17, 0.24, 0.15], [-0.1, 0.3, -0.14], 0xf3eee2, catHead).rotation.z = -0.28;
+  box([0.17, 0.24, 0.15], [-0.1, 0.3, 0.14], 0xf3eee2, catHead).rotation.z = 0.28;
+  box([0.04, 0.12, 0.1], [0.245, 0.07, -0.12], 0x50646a, catHead);
+  box([0.04, 0.12, 0.1], [0.245, 0.07, 0.12], 0x50646a, catHead);
+  box([0.035, 0.04, 0.04], [0.27, -0.04, 0], 0xc98284, catHead);
+  box([0.035, 0.07, 0.11], [0.266, -0.06, -0.2], 0xe9a7a1, catHead);
+  box([0.035, 0.07, 0.11], [0.266, -0.06, 0.2], 0xe9a7a1, catHead);
+  const catPaws = new THREE.Group();
+  cat.add(catPaws);
+  box([0.28, 0.14, 0.2], [0.34, -0.2, -0.15], 0xf8f3e8, catPaws);
+  box([0.28, 0.14, 0.2], [0.34, -0.2, 0.15], 0xf8f3e8, catPaws);
   const tail = new THREE.Group();
-  tail.position.set(-0.44, 0.05, 0);
+  tail.position.set(-0.42, 0.05, -0.08);
   cat.add(tail);
-  const tailMesh = box([0.1, 0.78, 0.1], [0, 0.34, 0], 0x706a60, tail);
-  tailMesh.rotation.z = -0.6;
+  const tailLower = box([0.11, 0.62, 0.11], [0, 0.27, 0], 0xe7e1d6, tail);
+  tailLower.rotation.z = -0.78;
+  const tailTip = box([0.11, 0.44, 0.11], [-0.2, 0.68, 0], 0xf7f1e7, tail);
+  tailTip.rotation.z = 0.38;
 
-  // Configurable chibi: layered hair, clothing, joints and readable face.
+  // Configurable, taller chibi rig. Small planes sit slightly proud of the face
+  // and clothes to avoid z-fighting while preserving the crisp pixel silhouette.
   const look = {
-    hairStyle: appearance?.hairStyle ?? "ponytail",
-    hair: appearance?.hairColor ?? 0x9a6048,
-    hairHighlight: appearance?.hairHighlight ?? 0xc77c55,
+    hairStyle: appearance?.hairStyle ?? "long",
+    hair: appearance?.hairColor ?? 0xeee4c9,
+    hairHighlight: appearance?.hairHighlight ?? 0xfffae9,
+    hairShadow: 0xc8b99a,
+    eye: appearance?.eyeColor ?? 0x3d89ad,
     skin: appearance?.skinColor ?? 0xedc5a6,
     primary: appearance?.outfitPrimary ?? palette.deepMint,
     secondary: appearance?.outfitSecondary ?? palette.creamShade,
     accent: appearance?.accentColor ?? palette.coral,
+    neckwear: appearance?.neckwear ?? "scarf",
   };
   const character = new THREE.Group();
   scene.add(character);
   const figure = new THREE.Group();
   character.add(figure);
   const torso = new THREE.Group();
-  torso.position.y = 1.35;
+  torso.position.y = 1.55;
   figure.add(torso);
   const bodyMaterial = toon(look.primary);
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.0, 0.54), bodyMaterial);
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.78, 1.04, 0.5), bodyMaterial);
   body.castShadow = true;
   torso.add(body);
-  box([1.05, 0.2, 0.62], [0, -0.2, 0], look.secondary, torso);
-  box([0.9, 0.16, 0.64], [0, -0.48, 0], palette.darkestWood, torso);
-  box([0.16, 0.2, 0.66], [0, -0.1, 0.03], look.accent, torso);
-  box([0.72, 0.17, 0.6], [0, 0.48, 0], look.secondary, torso);
-  const scarfTail = box([0.24, 0.68, 0.12], [0.36, 0.12, -0.35], look.accent, torso);
-  scarfTail.rotation.z = -0.22;
+  box([0.84, 0.18, 0.54], [0, 0.42, 0], look.secondary, torso);
+  box([0.92, 0.34, 0.58], [0, -0.43, 0], look.secondary, torso);
+  box([0.98, 0.12, 0.6], [0, -0.58, 0], palette.darkestWood, torso);
+  box([0.12, 0.62, 0.535], [0, 0.04, 0.02], look.accent, torso);
+  box([0.14, 0.1, 0.57], [0, -0.22, 0.03], 0xd9b887, torso);
+  box([0.21, 0.19, 0.07], [0, -0.22, 0.325], 0xd3b06f, torso);
+  box([0.34, 0.12, 0.06], [-0.23, 0.27, 0.29], look.secondary, torso).rotation.z = -0.52;
+  box([0.34, 0.12, 0.06], [0.23, 0.27, 0.29], look.secondary, torso).rotation.z = 0.52;
   const headGroup = new THREE.Group();
-  headGroup.position.y = 1.0;
+  headGroup.position.y = 1.03;
   torso.add(headGroup);
-  box([0.78, 0.74, 0.7], [0, 0, 0], look.skin, headGroup);
-  box([0.88, 0.36, 0.76], [0, 0.29, -0.02], look.hair, headGroup);
-  box([0.22, 0.48, 0.13], [-0.31, 0.06, 0.34], look.hair, headGroup);
-  box([0.18, 0.4, 0.13], [0.02, 0.13, 0.35], look.hairHighlight, headGroup).rotation.z = -0.16;
-  box([0.2, 0.42, 0.13], [0.27, 0.11, 0.34], look.hair, headGroup).rotation.z = 0.14;
-  const leftEye = box([0.09, 0.12, 0.055], [-0.16, -0.02, 0.37], palette.ink, headGroup);
-  const rightEye = box([0.09, 0.12, 0.055], [0.16, -0.02, 0.37], palette.ink, headGroup);
-  box([0.14, 0.045, 0.04], [0, -0.22, 0.37], 0xa65e57, headGroup);
+  box([0.72, 0.72, 0.64], [0, 0, 0], look.skin, headGroup);
+  box([0.82, 0.34, 0.7], [0, 0.3, -0.02], look.hair, headGroup);
+  box([0.08, 0.34, 0.7], [-0.45, 0.3, -0.02], look.hairShadow, headGroup);
+  box([0.08, 0.34, 0.7], [0.45, 0.3, -0.02], look.hairShadow, headGroup);
+  box([0.82, 0.08, 0.7], [0, 0.51, -0.02], look.hairShadow, headGroup);
+  box([0.16, 0.46, 0.11], [-0.29, 0.08, 0.34], look.hair, headGroup).rotation.z = -0.08;
+  box([0.16, 0.42, 0.11], [-0.1, 0.14, 0.345], look.hairHighlight, headGroup).rotation.z = -0.16;
+  box([0.16, 0.43, 0.11], [0.1, 0.13, 0.345], look.hair, headGroup).rotation.z = 0.13;
+  box([0.14, 0.38, 0.11], [0.28, 0.08, 0.34], look.hairHighlight, headGroup).rotation.z = 0.08;
+  box([0.16, 0.04, 0.045], [-0.16, 0.08, 0.35], 0xbba989, headGroup);
+  box([0.16, 0.04, 0.045], [0.16, 0.08, 0.35], 0xbba989, headGroup);
+  const leftEye = box([0.11, 0.14, 0.055], [-0.16, -0.015, 0.35], look.eye, headGroup);
+  const rightEye = box([0.11, 0.14, 0.055], [0.16, -0.015, 0.35], look.eye, headGroup);
+  box([0.035, 0.055, 0.025], [-0.14, 0.015, 0.385], 0xf8fbef, headGroup);
+  box([0.035, 0.055, 0.025], [0.18, 0.015, 0.385], 0xf8fbef, headGroup);
+  box([0.04, 0.035, 0.03], [0, -0.12, 0.37], 0xd69b83, headGroup);
+  box([0.12, 0.035, 0.035], [0, -0.23, 0.37], 0xaf6469, headGroup);
+  box([0.1, 0.055, 0.035], [-0.29, -0.12, 0.36], 0xe7a29a, headGroup);
+  box([0.1, 0.055, 0.035], [0.29, -0.12, 0.36], 0xe7a29a, headGroup);
+
+  const neckwear = new THREE.Group();
+  neckwear.position.set(0, -0.44, 0);
+  headGroup.add(neckwear);
+  box([0.62, 0.15, 0.55], [0, 0, 0], look.accent, neckwear);
+  if (look.neckwear === "scarf") {
+    box([0.22, 0.22, 0.14], [0.22, -0.13, 0.28], 0x356c87, neckwear).rotation.z = 0.25;
+    const scarfTail = box([0.2, 0.58, 0.12], [0.34, -0.38, -0.02], look.accent, neckwear);
+    scarfTail.rotation.z = -0.24;
+  } else {
+    box([0.12, 0.14, 0.08], [0, -0.12, 0.3], 0xd8bb76, neckwear);
+  }
+
   if (look.hairStyle === "ponytail") {
     const ponytail = new THREE.Group();
     ponytail.position.set(-0.36, 0.25, -0.34);
@@ -416,6 +482,14 @@ export function mountPixelResidenceScene({
     box([0.42, 0.82, 0.42], [0, -0.17, 0], look.hair, ponytail);
     box([0.34, 0.6, 0.36], [-0.08, -0.67, 0], look.hairHighlight, ponytail).rotation.z = 0.12;
     box([0.24, 0.18, 0.46], [0.14, 0.2, 0], look.accent, ponytail);
+  } else if (look.hairStyle === "long") {
+    box([0.8, 1.08, 0.28], [0, -0.25, -0.34], look.hair, headGroup);
+    box([0.08, 1.0, 0.28], [-0.44, -0.25, -0.34], look.hairShadow, headGroup);
+    box([0.08, 1.0, 0.28], [0.44, -0.25, -0.34], look.hairShadow, headGroup);
+    box([0.24, 0.9, 0.24], [-0.34, -0.34, -0.22], look.hairHighlight, headGroup).rotation.z = 0.06;
+    box([0.24, 0.92, 0.24], [0.34, -0.34, -0.22], look.hair, headGroup).rotation.z = -0.06;
+    box([0.18, 0.62, 0.18], [-0.32, -0.3, 0.23], look.hair, headGroup).rotation.z = 0.08;
+    box([0.18, 0.64, 0.18], [0.32, -0.3, 0.23], look.hairHighlight, headGroup).rotation.z = -0.08;
   } else if (look.hairStyle === "bob") {
     box([0.86, 0.58, 0.7], [0, -0.12, -0.22], look.hair, headGroup);
   } else {
@@ -424,34 +498,52 @@ export function mountPixelResidenceScene({
 
   const leftArmPivot = new THREE.Group();
   const rightArmPivot = new THREE.Group();
-  leftArmPivot.position.set(-0.57, 0.35, 0);
-  rightArmPivot.position.set(0.57, 0.35, 0);
+  leftArmPivot.position.set(-0.5, 0.36, 0);
+  rightArmPivot.position.set(0.5, 0.36, 0);
   torso.add(leftArmPivot, rightArmPivot);
-  box([0.24, 0.72, 0.28], [0, -0.32, 0], look.primary, leftArmPivot);
-  box([0.22, 0.22, 0.24], [0, -0.73, 0], look.skin, leftArmPivot);
-  box([0.24, 0.72, 0.28], [0, -0.32, 0], look.primary, rightArmPivot);
-  box([0.22, 0.22, 0.24], [0, -0.73, 0], look.skin, rightArmPivot);
+  box([0.22, 0.76, 0.26], [0, -0.34, 0], look.primary, leftArmPivot);
+  box([0.25, 0.16, 0.29], [0, -0.67, 0], look.secondary, leftArmPivot);
+  box([0.2, 0.22, 0.22], [0, -0.86, 0], look.skin, leftArmPivot);
+  box([0.22, 0.76, 0.26], [0, -0.34, 0], look.primary, rightArmPivot);
+  box([0.25, 0.16, 0.29], [0, -0.67, 0], look.secondary, rightArmPivot);
+  box([0.2, 0.22, 0.22], [0, -0.86, 0], look.skin, rightArmPivot);
   const legs = new THREE.Group();
   figure.add(legs);
   const leftLegPivot = new THREE.Group();
   const rightLegPivot = new THREE.Group();
-  leftLegPivot.position.set(-0.23, 0.84, 0);
-  rightLegPivot.position.set(0.23, 0.84, 0);
+  leftLegPivot.position.set(-0.21, 0.98, 0);
+  rightLegPivot.position.set(0.21, 0.98, 0);
   legs.add(leftLegPivot, rightLegPivot);
-  box([0.28, 0.78, 0.32], [0, -0.37, 0], 0x455a58, leftLegPivot);
-  box([0.34, 0.24, 0.52], [0, -0.77, 0.1], palette.darkestWood, leftLegPivot);
-  box([0.28, 0.78, 0.32], [0, -0.37, 0], 0x455a58, rightLegPivot);
-  box([0.34, 0.24, 0.52], [0, -0.77, 0.1], palette.darkestWood, rightLegPivot);
+  box([0.25, 0.72, 0.29], [0, -0.34, 0], 0x3f5662, leftLegPivot);
+  box([0.3, 0.44, 0.34], [0, -0.7, 0], palette.darkestWood, leftLegPivot);
+  box([0.34, 0.2, 0.52], [0, -0.9, 0.1], 0x3b3a38, leftLegPivot);
+  box([0.25, 0.72, 0.29], [0, -0.34, 0], 0x3f5662, rightLegPivot);
+  box([0.3, 0.44, 0.34], [0, -0.7, 0], palette.darkestWood, rightLegPivot);
+  box([0.34, 0.2, 0.52], [0, -0.9, 0.1], 0x3b3a38, rightLegPivot);
   const sleepColor = new THREE.Color(0x8ca5aa);
   const dayColor = new THREE.Color(look.primary);
 
+  // A dedicated under-the-quilt sleep pose avoids rotating the walking rig
+  // through the mattress. Only the head and scarf edge remain above the covers.
+  const sleepingFigure = new THREE.Group();
+  sleepingFigure.position.set(-1.03, 1.48, -0.24);
+  sleepingFigure.visible = false;
+  bed.add(sleepingFigure);
+  box([0.64, 0.28, 0.58], [0, 0, 0], look.skin, sleepingFigure);
+  box([0.7, 0.2, 0.64], [-0.03, 0.17, -0.02], look.hair, sleepingFigure);
+  box([0.18, 0.23, 0.12], [-0.23, 0.02, 0.3], look.hairHighlight, sleepingFigure);
+  box([0.18, 0.23, 0.12], [0.22, 0.02, 0.3], look.hair, sleepingFigure);
+  box([0.12, 0.025, 0.035], [-0.14, -0.02, 0.305], look.eye, sleepingFigure);
+  box([0.12, 0.025, 0.035], [0.14, -0.02, 0.305], look.eye, sleepingFigure);
+  box([0.34, 0.09, 0.58], [0.25, -0.19, 0], look.accent, sleepingFigure);
+
   const waypoints: Record<ResidenceActivity, THREE.Vector3> = {
-    sleep: new THREE.Vector3(-3.72, 0.82, -2.35),
-    work: new THREE.Vector3(2.72, 0.03, -1.45),
-    read: new THREE.Vector3(-3.45, 0.03, 0.98),
-    cat: new THREE.Vector3(0.08, 0.03, 1.48),
-    idle: new THREE.Vector3(-0.25, 0.03, 0.08),
-    away: new THREE.Vector3(4.85, 0.03, -3.2),
+    sleep: new THREE.Vector3(-2.68, 0.16, -1.28),
+    work: new THREE.Vector3(2.72, 0.16, -1.45),
+    read: new THREE.Vector3(-3.45, 0.16, 0.98),
+    cat: new THREE.Vector3(0.02, 0.16, 1.48),
+    idle: new THREE.Vector3(-0.25, 0.16, 0.08),
+    away: new THREE.Vector3(4.85, 0.16, -3.2),
   };
   character.position.copy(waypoints.idle);
 
@@ -468,6 +560,22 @@ export function mountPixelResidenceScene({
   const nighttimeBackground = new THREE.Color(0x738b91);
   let animationFrame = 0;
   const previousPosition = character.position.clone();
+  type CatSpot = "floor" | "desk" | "bed";
+  const catSpots: Record<CatSpot, { position: THREE.Vector3; rotation: number }> = {
+    floor: { position: new THREE.Vector3(0.58, 0.42, 1.5), rotation: 0.05 },
+    desk: { position: new THREE.Vector3(3.72, 1.54, -2.28), rotation: -Math.PI * 0.62 },
+    bed: { position: new THREE.Vector3(-2.35, 1.54, -2.26), rotation: Math.PI * 0.18 },
+  };
+  const chooseCatSpot = (bucket: number): CatSpot => {
+    const roll = hashString(`${characterName}:cat:${bucket}`) % 10;
+    if (roll < 5) return "floor";
+    if (roll < 8) return "desk";
+    return "bed";
+  };
+  let catSpot = chooseCatSpot(Math.floor(Date.now() / 720_000));
+  let catFrom = catSpots[catSpot].position.clone();
+  let catMoveStartedAt = performance.now() - 2_000;
+  cat.position.copy(catSpots[catSpot].position);
 
   const resize = () => {
     const width = container.clientWidth;
@@ -521,10 +629,10 @@ export function mountPixelResidenceScene({
     const waving = performance.now() < waveUntil.current && !sleeping && !away;
     const walkCycle = Math.sin(elapsed * 8.2);
 
-    figure.rotation.z = smooth(figure.rotation.z, sleeping ? -Math.PI / 2 : 0, 0.07);
+    figure.rotation.z = smooth(figure.rotation.z, 0, 0.07);
     figure.position.y = smooth(
       figure.position.y,
-      sleeping ? 0.28 : working || reading ? -0.34 : petting ? -0.2 : walking ? Math.abs(walkCycle) * 0.05 : Math.sin(elapsed * 2.1) * 0.025,
+      working ? -0.36 : reading ? -0.42 : petting ? -0.14 : walking ? Math.abs(walkCycle) * 0.05 : Math.sin(elapsed * 2.1) * 0.025,
       0.12,
     );
     torso.rotation.x = smooth(torso.rotation.x, petting ? 0.38 : reading ? 0.12 : 0, 0.1);
@@ -536,8 +644,10 @@ export function mountPixelResidenceScene({
     rightArmPivot.rotation.z = smooth(rightArmPivot.rotation.z, waving ? -1.75 + Math.sin(elapsed * 10) * 0.22 : petting ? -0.18 : 0, 0.18);
     leftArmPivot.rotation.z = smooth(leftArmPivot.rotation.z, reading ? 0.34 : 0, 0.12);
     bodyMaterial.color.lerp(sleeping ? sleepColor : dayColor, 0.07);
-    leftEye.scale.y = smooth(leftEye.scale.y, sleeping ? 0.18 : 1, 0.16);
-    rightEye.scale.y = smooth(rightEye.scale.y, sleeping ? 0.18 : 1, 0.16);
+    leftEye.scale.y = smooth(leftEye.scale.y, 1, 0.16);
+    rightEye.scale.y = smooth(rightEye.scale.y, 1, 0.16);
+    figure.visible = !sleeping;
+    sleepingFigure.visible = sleeping;
 
     heldBook.visible = reading;
     if (reading) {
@@ -545,8 +655,10 @@ export function mountPixelResidenceScene({
       heldBook.rotation.y = character.rotation.y;
       heldBook.position.y += Math.sin(elapsed * 1.7) * 0.02;
     }
-    blanket.position.y = smooth(blanket.position.y, sleeping ? 0.14 : 0, 0.08);
-    pillow.rotation.z = sleeping ? Math.sin(elapsed * 1.2) * 0.015 : 0;
+    blanket.position.y = smooth(blanket.position.y, sleeping ? 0.035 + Math.sin(elapsed * 1.25) * 0.014 : 0, 0.08);
+    sleepingFigure.position.y = 1.48 + (sleeping ? Math.sin(elapsed * 1.25) * 0.012 : 0);
+    pillow.rotation.z = sleeping ? Math.sin(elapsed * 0.8) * 0.008 : 0;
+    secondPillow.rotation.z = sleeping ? -Math.sin(elapsed * 0.8) * 0.006 : 0;
     chair.position.z = smooth(chair.position.z, working ? -1.12 : -1.35, 0.06);
     laptopScreenMaterial.emissiveIntensity = smooth(
       laptopScreenMaterial.emissiveIntensity,
@@ -557,7 +669,24 @@ export function mountPixelResidenceScene({
     doorPivot.rotation.y = smooth(doorPivot.rotation.y, current === "away" ? -1.15 : 0, 0.055);
     character.visible = !away;
 
-    cat.position.x = smooth(cat.position.x, petting ? 0.54 : 0.9 + Math.sin(elapsed * 0.28) * 0.2, 0.04);
+    const scheduledCatSpot = chooseCatSpot(Math.floor(Date.now() / 720_000));
+    let desiredCatSpot: CatSpot = petting ? "floor" : scheduledCatSpot;
+    if (working && desiredCatSpot === "desk") desiredCatSpot = "bed";
+    if (sleeping && desiredCatSpot === "bed") desiredCatSpot = "desk";
+    if (desiredCatSpot !== catSpot) {
+      catFrom = cat.position.clone();
+      catSpot = desiredCatSpot;
+      catMoveStartedAt = performance.now();
+    }
+    const catMoveProgress = THREE.MathUtils.clamp((performance.now() - catMoveStartedAt) / 1_900, 0, 1);
+    const catEase = 1 - Math.pow(1 - catMoveProgress, 3);
+    cat.position.lerpVectors(catFrom, catSpots[catSpot].position, catEase);
+    if (catMoveProgress < 1) cat.position.y += Math.sin(catMoveProgress * Math.PI) * 0.72;
+    cat.rotation.y = smooth(cat.rotation.y, catSpots[catSpot].rotation, 0.08);
+    const catLoafing = catSpot !== "floor" && catMoveProgress > 0.72;
+    catBody.scale.y = smooth(catBody.scale.y, catLoafing ? 0.62 : 1, 0.1);
+    catHead.position.y = smooth(catHead.position.y, catLoafing ? 0.1 : 0.2, 0.1);
+    catPaws.visible = !catLoafing;
     catHead.rotation.z = petting ? Math.sin(elapsed * 2.1) * 0.08 - 0.12 : Math.sin(elapsed * 0.8) * 0.04;
     tail.rotation.z = -0.95 + Math.sin(elapsed * (petting ? 3.2 : 1.7)) * 0.25;
 
