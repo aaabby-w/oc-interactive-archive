@@ -10,6 +10,17 @@ const character01: CharacterRegistryEntry = {
     },
     media: {},
     modules: {},
+    residence: {
+      appearance: {
+        hairStyle: "ponytail",
+        hairColor: 0xc8754f,
+        hairHighlight: 0xe9a067,
+        skinColor: 0xf0c6a5,
+        outfitPrimary: 0x52736d,
+        outfitSecondary: 0xe8d7b8,
+        accentColor: 0xc76f52,
+      },
+    },
   },
   isPublished: true,
   order: 1,

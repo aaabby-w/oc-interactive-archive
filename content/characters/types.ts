@@ -29,8 +29,19 @@ export type CharacterModules = {
 
 export type ResidenceActivity = "sleep" | "work" | "read" | "cat" | "idle" | "away";
 
+export type PixelResidenceAppearance = {
+  hairStyle?: "ponytail" | "bob" | "short";
+  hairColor?: number;
+  hairHighlight?: number;
+  skinColor?: number;
+  outfitPrimary?: number;
+  outfitSecondary?: number;
+  accentColor?: number;
+};
+
 export type CharacterResidence = {
   greetingReplies?: Partial<Record<ResidenceActivity, string[]>>;
+  appearance?: PixelResidenceAppearance;
 };
 
 export type Character = {

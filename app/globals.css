@@ -2220,7 +2220,8 @@ html.theme-changing .theme-icon {
   }
 
   .residence-window {
-    min-height: 66svh;
+    min-height: 0;
+    aspect-ratio: 4 / 3;
     border-width: 6px;
   }
 
