@@ -49,6 +49,55 @@ function hashString(value: string) {
   return hash >>> 0;
 }
 
+function createDrapedQuiltGeometry() {
+  const columns = 24;
+  const rows = 20;
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const indices: number[] = [];
+  const mint = new THREE.Color(palette.mint);
+  const paleMint = new THREE.Color(0xa8ccc0);
+  const cream = new THREE.Color(palette.cream);
+
+  for (let row = 0; row <= rows; row += 1) {
+    const v = row / rows;
+    for (let column = 0; column <= columns; column += 1) {
+      const u = column / columns;
+      const footT = THREE.MathUtils.smoothstep(u, 0.76, 1);
+      const sideT = THREE.MathUtils.smoothstep(v, 0.78, 1);
+      const drop = Math.max(footT * 0.68, sideT * 0.58);
+      const foldStrength = 1 - Math.max(footT, sideT) * 0.66;
+      const x = -0.58 + u * 1.72 + Math.sin(footT * Math.PI * 0.5) * 0.33;
+      const z = -0.78 + v * 1.27 + Math.sin(sideT * Math.PI * 0.5) * 0.34;
+      const folds = (
+        Math.sin(u * Math.PI * 9 + v * 1.4) * 0.035
+        + Math.sin(v * Math.PI * 6.5) * 0.018
+      ) * foldStrength;
+      const y = 1.43 - drop + folds;
+      positions.push(x, y, z);
+
+      const stripe = Math.floor(u * 10) % 3;
+      const color = stripe === 1 ? cream : stripe === 2 ? paleMint : mint;
+      colors.push(color.r, color.g, color.b);
+    }
+  }
+
+  for (let row = 0; row < rows; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      const current = row * (columns + 1) + column;
+      const next = current + columns + 1;
+      indices.push(current, next, current + 1, current + 1, next, next + 1);
+    }
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 export function mountPixelResidenceScene({
   container,
   characterName,
@@ -67,10 +116,10 @@ export function mountPixelResidenceScene({
   const camera = new THREE.OrthographicCamera(-6, 6, 4.5, -4.5, 0.1, 60);
   camera.position.set(10.5, 8.7, 12.5);
 
-  const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false });
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
   renderer.setPixelRatio(1);
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.BasicShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.domElement.setAttribute("role", "img");
   renderer.domElement.setAttribute(
@@ -85,10 +134,10 @@ export function mountPixelResidenceScene({
   controls.enableRotate = !reduceMotion;
   controls.minZoom = 0.82;
   controls.maxZoom = 1.5;
-  controls.minPolarAngle = Math.PI * 0.22;
-  controls.maxPolarAngle = Math.PI * 0.47;
-  controls.minAzimuthAngle = -Math.PI * 0.29;
-  controls.maxAzimuthAngle = Math.PI * 0.08;
+  controls.minPolarAngle = 0.06;
+  controls.maxPolarAngle = Math.PI - 0.06;
+  controls.minAzimuthAngle = -Infinity;
+  controls.maxAzimuthAngle = Infinity;
   controls.target.set(-0.1, 1.15, -0.2);
 
   scene.add(new THREE.HemisphereLight(0xfff4d8, 0x526a65, 2.7));
@@ -135,6 +184,22 @@ export function mountPixelResidenceScene({
     parent.add(mesh);
     return mesh;
   };
+  const smoothMesh = (
+    geometry: THREE.BufferGeometry,
+    position: [number, number, number],
+    color: number,
+    parent: THREE.Object3D = scene,
+  ) => {
+    const mesh = new THREE.Mesh(
+      geometry,
+      new THREE.MeshStandardMaterial({ color, roughness: 0.88, metalness: 0 }),
+    );
+    mesh.position.set(...position);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    parent.add(mesh);
+    return mesh;
+  };
 
   // A raised, tiled dollhouse base keeps the room legible as an isometric miniature.
   box([11.7, 0.38, 8.5], [0, -0.22, 0], palette.darkestWood);
@@ -153,9 +218,17 @@ export function mountPixelResidenceScene({
 
   // Cutaway walls, dark timber outlines and wainscot bands.
   box([11.35, 4.9, 0.18], [0, 2.48, -4.08], palette.cream);
-  box([0.18, 4.9, 8.15], [-5.67, 2.48, 0], 0xe5dfcc);
+  // The side wall is built around a real doorway instead of placing a door
+  // against a solid wall. The opening sits clear of both desk and bookshelf.
+  box([0.18, 4.9, 5.33], [-5.67, 2.48, -1.41], 0xe5dfcc);
+  box([0.18, 4.9, 1.2], [-5.67, 2.48, 3.48], 0xe5dfcc);
+  box([0.18, 2.04, 1.63], [-5.67, 3.9, 2.06], 0xe5dfcc);
   box([11.5, 0.18, 0.24], [0, 1.03, -3.94], palette.paleWood);
-  box([0.24, 0.18, 8.18], [-5.53, 1.03, 0], palette.paleWood);
+  box([0.24, 0.18, 5.33], [-5.53, 1.03, -1.41], palette.paleWood);
+  box([0.24, 0.18, 1.2], [-5.53, 1.03, 3.48], palette.paleWood);
+  box([0.27, 2.88, 0.13], [-5.53, 1.48, 1.22], palette.darkestWood);
+  box([0.27, 2.88, 0.13], [-5.53, 1.48, 2.88], palette.darkestWood);
+  box([0.27, 0.16, 1.78], [-5.53, 2.88, 2.05], palette.darkestWood);
   for (let beam = -4.8; beam <= 4.8; beam += 1.6) {
     box([0.055, 4.55, 0.04], [beam, 2.42, -3.96], 0xd2c7b0);
   }
@@ -246,14 +319,18 @@ export function mountPixelResidenceScene({
   box([0.72, 0.025, 0.53], [-1.03, 1.415, 0.39], 0xf3eee0, bed);
   const blanket = new THREE.Group();
   bed.add(blanket);
-  box([2.12, 0.2, 1.62], [0.46, 1.32, 0], palette.mint, blanket);
-  box([2.08, 0.54, 0.12], [0.46, 1.08, 0.84], 0x6f9f96, blanket);
-  box([0.15, 0.46, 1.62], [1.48, 1.11, 0], 0x65958c, blanket);
-  for (let stripe = -0.28; stripe <= 1.18; stripe += 0.49) {
-    box([0.16, 0.03, 1.64], [stripe, 1.435, 0], palette.cream, blanket);
-  }
-  box([2.12, 0.035, 0.08], [0.46, 1.43, -0.78], palette.deepMint, blanket);
-  box([2.12, 0.035, 0.08], [0.46, 1.43, 0.78], palette.deepMint, blanket);
+  const quilt = new THREE.Mesh(
+    createDrapedQuiltGeometry(),
+    new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      roughness: 0.98,
+      metalness: 0,
+      side: THREE.DoubleSide,
+    }),
+  );
+  quilt.castShadow = true;
+  quilt.receiveShadow = true;
+  blanket.add(quilt);
 
   // Desk: drawers, books, paper, task lamp, laptop and a pulled-out chair.
   const desk = new THREE.Group();
@@ -319,8 +396,8 @@ export function mountPixelResidenceScene({
     }
   }
   const readingChair = new THREE.Group();
-  readingChair.position.set(-3.45, 0, 0.94);
-  readingChair.rotation.y = 0.34;
+  readingChair.position.set(-2.72, 0, 1.18);
+  readingChair.rotation.y = 0.18;
   scene.add(readingChair);
   box([1.18, 0.38, 1.08], [0, 0.48, 0], palette.deepMint, readingChair);
   box([1.22, 1.22, 0.3], [0, 1.08, -0.42], palette.teal, readingChair);
@@ -344,7 +421,7 @@ export function mountPixelResidenceScene({
     box([0.36 + index * 0.04, 0.14, 0.03], [x, y, 0.14], index % 2 ? 0xd8c27c : 0x7a9f69, map);
   });
   const notice = new THREE.Group();
-  notice.position.set(-5.54, 2.68, 2.55);
+  notice.position.set(-5.54, 2.68, -0.86);
   notice.rotation.y = Math.PI / 2;
   scene.add(notice);
   box([1.5, 1.4, 0.08], [0, 0, 0], palette.paleWood, notice);
@@ -352,7 +429,7 @@ export function mountPixelResidenceScene({
     box([0.5, 0.38, 0.025], [x, y, 0.06], color, notice);
   });
   const plant = new THREE.Group();
-  plant.position.set(-4.72, 0, 3.13);
+  plant.position.set(4.82, 0, 2.86);
   scene.add(plant);
   cylinder(0.4, 0.32, 0.65, [0, 0.44, 0], palette.coral, plant);
   for (let leaf = 0; leaf < 7; leaf += 1) {
@@ -367,9 +444,12 @@ export function mountPixelResidenceScene({
   }
 
   // Door is a pivoted object so leaving feels like a physical event.
+  const doorMount = new THREE.Group();
+  doorMount.position.set(-5.56, 0, 2.76);
+  doorMount.rotation.y = Math.PI / 2;
+  scene.add(doorMount);
   const doorPivot = new THREE.Group();
-  doorPivot.position.set(4.55, 0, -3.91);
-  scene.add(doorPivot);
+  doorMount.add(doorPivot);
   const door = box([1.42, 2.72, 0.18], [0.71, 1.36, 0], palette.deepMint, doorPivot);
   for (let panelY = 0.72; panelY < 2.2; panelY += 0.72) {
     box([1.02, 0.5, 0.06], [0.71, panelY, 0.12], 0x6f9188, doorPivot);
@@ -377,35 +457,67 @@ export function mountPixelResidenceScene({
   cylinder(0.08, 0.08, 0.09, [1.18, 1.34, 0.16], 0xd8bd7c, doorPivot).rotation.x = Math.PI / 2;
   door.userData.isDoor = true;
 
-  // A white articulated cat. Its paws, face and tail are separate so sitting,
-  // loafing and being petted can remain readable at the low render resolution.
+  // A smooth, conventionally modelled white cat contrasts with the room's
+  // pixel-inspired furniture while keeping the same animated behaviour.
   const cat = new THREE.Group();
-  cat.position.set(0.9, 0.42, 1.5);
+  cat.position.set(0.9, 0.52, 1.5);
   scene.add(cat);
-  const catBody = box([0.86, 0.38, 0.48], [0, 0, 0], 0xf3eee2, cat);
-  box([0.42, 0.22, 0.5], [-0.3, 0.18, 0], 0xe4dfd4, cat);
+  const catBody = smoothMesh(new THREE.SphereGeometry(0.46, 24, 16), [0, 0, 0], 0xf3eee2, cat);
+  catBody.scale.set(1.08, 0.66, 0.68);
+  const catHaunch = smoothMesh(new THREE.SphereGeometry(0.31, 20, 14), [-0.3, 0.02, 0], 0xe8e2d7, cat);
+  catHaunch.scale.set(1.1, 0.9, 1.05);
   const catHead = new THREE.Group();
-  catHead.position.set(0.5, 0.2, 0);
+  catHead.position.set(0.44, 0.13, 0);
   cat.add(catHead);
-  box([0.48, 0.46, 0.46], [0, 0, 0], 0xf8f3e8, catHead);
-  box([0.17, 0.24, 0.15], [-0.1, 0.3, -0.14], 0xf3eee2, catHead).rotation.z = -0.28;
-  box([0.17, 0.24, 0.15], [-0.1, 0.3, 0.14], 0xf3eee2, catHead).rotation.z = 0.28;
-  box([0.04, 0.12, 0.1], [0.245, 0.07, -0.12], 0x50646a, catHead);
-  box([0.04, 0.12, 0.1], [0.245, 0.07, 0.12], 0x50646a, catHead);
-  box([0.035, 0.04, 0.04], [0.27, -0.04, 0], 0xc98284, catHead);
-  box([0.035, 0.07, 0.11], [0.266, -0.06, -0.2], 0xe9a7a1, catHead);
-  box([0.035, 0.07, 0.11], [0.266, -0.06, 0.2], 0xe9a7a1, catHead);
+  const catFace = smoothMesh(new THREE.SphereGeometry(0.29, 24, 16), [0, 0, 0], 0xf9f4e9, catHead);
+  catFace.scale.set(1, 0.95, 1.02);
+  const leftEar = smoothMesh(new THREE.ConeGeometry(0.135, 0.3, 16), [-0.04, 0.28, -0.16], 0xf3eee2, catHead);
+  const rightEar = smoothMesh(new THREE.ConeGeometry(0.135, 0.3, 16), [-0.04, 0.28, 0.16], 0xf3eee2, catHead);
+  leftEar.rotation.z = -0.1;
+  rightEar.rotation.z = 0.1;
+  const innerEarMaterial = new THREE.MeshStandardMaterial({ color: 0xe7b9b3, roughness: 1 });
+  [-0.16, 0.16].forEach((z) => {
+    const innerEar = new THREE.Mesh(new THREE.ConeGeometry(0.068, 0.16, 12), innerEarMaterial);
+    innerEar.position.set(0.07, 0.285, z);
+    innerEar.rotation.z = -0.15;
+    catHead.add(innerEar);
+  });
+  [-0.105, 0.105].forEach((z) => {
+    const eye = smoothMesh(new THREE.SphereGeometry(0.046, 12, 8), [0.258, 0.035, z], 0x50646a, catHead);
+    eye.scale.set(0.48, 1, 1);
+    smoothMesh(new THREE.SphereGeometry(0.014, 8, 6), [0.278, 0.052, z - 0.012], 0xf8fbef, catHead);
+  });
+  smoothMesh(new THREE.SphereGeometry(0.035, 12, 8), [0.292, -0.045, 0], 0xc98284, catHead).scale.set(0.55, 0.72, 1);
+  smoothMesh(new THREE.SphereGeometry(0.064, 12, 8), [0.248, -0.078, -0.055], 0xfffbf1, catHead).scale.set(0.72, 0.68, 1);
+  smoothMesh(new THREE.SphereGeometry(0.064, 12, 8), [0.248, -0.078, 0.055], 0xfffbf1, catHead).scale.set(0.72, 0.68, 1);
+  [-0.18, 0.18].forEach((z) => {
+    const blush = smoothMesh(new THREE.CircleGeometry(0.048, 18), [0.275, -0.072, z], 0xe9a7a1, catHead);
+    blush.rotation.y = Math.PI / 2;
+  });
   const catPaws = new THREE.Group();
   cat.add(catPaws);
-  box([0.28, 0.14, 0.2], [0.34, -0.2, -0.15], 0xf8f3e8, catPaws);
-  box([0.28, 0.14, 0.2], [0.34, -0.2, 0.15], 0xf8f3e8, catPaws);
+  smoothMesh(new THREE.SphereGeometry(0.13, 16, 10), [0.3, -0.27, -0.14], 0xf8f3e8, catPaws).scale.set(1.35, 0.75, 1);
+  smoothMesh(new THREE.SphereGeometry(0.13, 16, 10), [0.3, -0.27, 0.14], 0xf8f3e8, catPaws).scale.set(1.35, 0.75, 1);
   const tail = new THREE.Group();
-  tail.position.set(-0.42, 0.05, -0.08);
+  tail.position.set(-0.4, 0.02, -0.05);
   cat.add(tail);
-  const tailLower = box([0.11, 0.62, 0.11], [0, 0.27, 0], 0xe7e1d6, tail);
-  tailLower.rotation.z = -0.78;
-  const tailTip = box([0.11, 0.44, 0.11], [-0.2, 0.68, 0], 0xf7f1e7, tail);
-  tailTip.rotation.z = 0.38;
+  smoothMesh(
+    new THREE.TubeGeometry(
+      new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(-0.23, 0.18, -0.02),
+        new THREE.Vector3(-0.36, 0.43, 0.01),
+        new THREE.Vector3(-0.24, 0.68, 0.05),
+      ]),
+      18,
+      0.072,
+      10,
+      false,
+    ),
+    [0, 0, 0],
+    0xeee8dc,
+    tail,
+  );
 
   // Configurable, taller chibi rig. Small planes sit slightly proud of the face
   // and clothes to avoid z-fighting while preserving the crisp pixel silhouette.
@@ -540,10 +652,10 @@ export function mountPixelResidenceScene({
   const waypoints: Record<ResidenceActivity, THREE.Vector3> = {
     sleep: new THREE.Vector3(-2.68, 0.16, -1.28),
     work: new THREE.Vector3(2.72, 0.16, -1.45),
-    read: new THREE.Vector3(-3.45, 0.16, 0.98),
+    read: new THREE.Vector3(-2.72, 0.16, 1.18),
     cat: new THREE.Vector3(0.02, 0.16, 1.48),
     idle: new THREE.Vector3(-0.25, 0.16, 0.08),
-    away: new THREE.Vector3(4.85, 0.16, -3.2),
+    away: new THREE.Vector3(-4.72, 0.16, 2.54),
   };
   character.position.copy(waypoints.idle);
 
@@ -562,9 +674,9 @@ export function mountPixelResidenceScene({
   const previousPosition = character.position.clone();
   type CatSpot = "floor" | "desk" | "bed";
   const catSpots: Record<CatSpot, { position: THREE.Vector3; rotation: number }> = {
-    floor: { position: new THREE.Vector3(0.58, 0.42, 1.5), rotation: 0.05 },
-    desk: { position: new THREE.Vector3(3.72, 1.54, -2.28), rotation: -Math.PI * 0.62 },
-    bed: { position: new THREE.Vector3(-2.35, 1.54, -2.26), rotation: Math.PI * 0.18 },
+    floor: { position: new THREE.Vector3(0.58, 0.52, 1.5), rotation: 0.05 },
+    desk: { position: new THREE.Vector3(3.72, 1.64, -2.28), rotation: -Math.PI * 0.62 },
+    bed: { position: new THREE.Vector3(-2.35, 1.68, -2.26), rotation: Math.PI * 0.18 },
   };
   const chooseCatSpot = (bucket: number): CatSpot => {
     const roll = hashString(`${characterName}:cat:${bucket}`) % 10;
@@ -581,7 +693,7 @@ export function mountPixelResidenceScene({
     const width = container.clientWidth;
     const height = container.clientHeight;
     if (!width || !height) return;
-    const pixelScale = width < 760 ? 0.52 : 0.68;
+    const pixelScale = width < 760 ? 0.76 : 0.9;
     renderer.setSize(Math.round(width * pixelScale), Math.round(height * pixelScale), false);
     const aspect = width / height;
     const viewHeight = width < 760 ? 10.3 : 8.7;
@@ -684,8 +796,9 @@ export function mountPixelResidenceScene({
     if (catMoveProgress < 1) cat.position.y += Math.sin(catMoveProgress * Math.PI) * 0.72;
     cat.rotation.y = smooth(cat.rotation.y, catSpots[catSpot].rotation, 0.08);
     const catLoafing = catSpot !== "floor" && catMoveProgress > 0.72;
-    catBody.scale.y = smooth(catBody.scale.y, catLoafing ? 0.62 : 1, 0.1);
-    catHead.position.y = smooth(catHead.position.y, catLoafing ? 0.1 : 0.2, 0.1);
+    catBody.scale.y = smooth(catBody.scale.y, catLoafing ? 0.5 : 0.66, 0.1);
+    catHaunch.scale.y = smooth(catHaunch.scale.y, catLoafing ? 0.72 : 0.9, 0.1);
+    catHead.position.y = smooth(catHead.position.y, catLoafing ? 0.06 : 0.13, 0.1);
     catPaws.visible = !catLoafing;
     catHead.rotation.z = petting ? Math.sin(elapsed * 2.1) * 0.08 - 0.12 : Math.sin(elapsed * 0.8) * 0.04;
     tail.rotation.z = -0.95 + Math.sin(elapsed * (petting ? 3.2 : 1.7)) * 0.25;

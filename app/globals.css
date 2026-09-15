@@ -1424,7 +1424,7 @@ html.theme-changing .theme-icon {
 
 .residence-canvas canvas {
   cursor: grab;
-  image-rendering: pixelated;
+  image-rendering: auto;
   touch-action: pan-y;
 }
 
