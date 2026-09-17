@@ -16,17 +16,6 @@ export const characterTemplate: Character = {
   },
   modules: {},
   residence: {
-    appearance: {
-      hairStyle: "bob",
-      hairColor: 0x59473f,
-      hairHighlight: 0x80675b,
-      eyeColor: 0x405f68,
-      skinColor: 0xe5bfa4,
-      outfitPrimary: 0x66877e,
-      outfitSecondary: 0xd8c9aa,
-      accentColor: 0xb96f59,
-      neckwear: "choker",
-    },
     greetingReplies: {},
   },
 };

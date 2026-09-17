@@ -17,10 +17,10 @@ type Particle = {
 };
 
 const trailPalette = [
-  [111, 168, 145],
-  [145, 190, 180],
-  [219, 184, 128],
-  [188, 160, 196],
+  [78, 145, 117],
+  [91, 156, 148],
+  [205, 153, 78],
+  [154, 116, 169],
 ] as const;
 
 const scrambleGlyphs = "未命名档案角色世界图像记录／·01ARCHIVE";
@@ -180,29 +180,31 @@ export function GlobalAtmosphere() {
     const spawn = (x: number, y: number, count = 2, burst = false) => {
       for (let index = 0; index < count; index += 1) {
         const angle = burst ? Math.random() * Math.PI * 2 : Math.PI * (0.55 + Math.random() * 0.9);
-        const speed = burst ? 0.8 + Math.random() * 2.2 : 0.16 + Math.random() * 0.55;
+        const speed = burst ? 1.2 + Math.random() * 3.2 : 0.22 + Math.random() * 0.75;
         particles.push({
           x: x + (Math.random() - 0.5) * 6,
           y: y + (Math.random() - 0.5) * 6,
           vx: Math.cos(angle) * speed,
           vy: Math.sin(angle) * speed + (burst ? 0 : 0.15),
           life: 1,
-          decay: burst ? 0.022 + Math.random() * 0.015 : 0.035 + Math.random() * 0.022,
-          size: burst ? 1.4 + Math.random() * 2.1 : 0.8 + Math.random() * 1.5,
+          decay: burst ? 0.017 + Math.random() * 0.009 : 0.022 + Math.random() * 0.014,
+          size: burst ? 2.2 + Math.random() * 3.4 : 1.7 + Math.random() * 2.3,
           color: trailPalette[Math.floor(Math.random() * trailPalette.length)],
         });
       }
       if (burst) {
         particles.push({ x, y, vx: 0, vy: 0, life: 1, decay: 0.035, size: 4, color: trailPalette[0], ring: true });
       }
-      if (particles.length > 96) particles.splice(0, particles.length - 96);
+      if (particles.length > 140) particles.splice(0, particles.length - 140);
       requestFrame();
     };
 
     function draw() {
       animationFrame = 0;
       drawingContext.clearRect(0, 0, width, height);
-      drawingContext.globalCompositeOperation = "lighter";
+      // `lighter` disappeared against the pale site background. Source-over
+      // keeps the mineral colors visible in both light and dark modes.
+      drawingContext.globalCompositeOperation = "source-over";
       for (let index = particles.length - 1; index >= 0; index -= 1) {
         const particle = particles[index];
         particle.x += particle.vx;
@@ -218,14 +220,14 @@ export function GlobalAtmosphere() {
         drawingContext.beginPath();
         if (particle.ring) {
           drawingContext.arc(particle.x, particle.y, particle.size + (1 - particle.life) * 24, 0, Math.PI * 2);
-          drawingContext.strokeStyle = `rgba(${red}, ${green}, ${blue}, ${particle.life * 0.34})`;
-          drawingContext.lineWidth = 1;
+          drawingContext.strokeStyle = `rgba(${red}, ${green}, ${blue}, ${particle.life * 0.64})`;
+          drawingContext.lineWidth = 1.5;
           drawingContext.stroke();
         } else {
           drawingContext.arc(particle.x, particle.y, particle.size * particle.life, 0, Math.PI * 2);
-          drawingContext.fillStyle = `rgba(${red}, ${green}, ${blue}, ${particle.life * 0.58})`;
-          drawingContext.shadowColor = `rgba(${red}, ${green}, ${blue}, ${particle.life * 0.45})`;
-          drawingContext.shadowBlur = 9;
+          drawingContext.fillStyle = `rgba(${red}, ${green}, ${blue}, ${particle.life * 0.82})`;
+          drawingContext.shadowColor = `rgba(${red}, ${green}, ${blue}, ${particle.life * 0.62})`;
+          drawingContext.shadowBlur = 12;
           drawingContext.fill();
           drawingContext.shadowBlur = 0;
         }
@@ -250,14 +252,14 @@ export function GlobalAtmosphere() {
       moveY(event.clientY);
       cursor.dataset.visible = "true";
       const distance = Math.hypot(event.clientX - lastX, event.clientY - lastY);
-      if (distance > 7 && event.timeStamp - lastSpawn > 15) {
-        spawn(event.clientX, event.clientY, distance > 24 ? 2 : 1);
+      if (distance > 5 && event.timeStamp - lastSpawn > 12) {
+        spawn(event.clientX, event.clientY, distance > 20 ? 4 : 2);
         lastX = event.clientX;
         lastY = event.clientY;
         lastSpawn = event.timeStamp;
       }
     };
-    const onDown = (event: PointerEvent) => spawn(event.clientX, event.clientY, 15, true);
+    const onDown = (event: PointerEvent) => spawn(event.clientX, event.clientY, 28, true);
     const onLeave = () => { cursor.dataset.visible = "false"; };
 
     window.addEventListener("resize", resize);

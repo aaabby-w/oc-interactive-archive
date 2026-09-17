@@ -10,7 +10,7 @@ import {
   restoreResidenceWeather,
   type ResidenceWeather,
 } from "@/lib/residence-weather";
-import { mountPixelResidenceScene } from "@/components/residence/pixel-residence-scene";
+import { mountLowPolyResidenceScene } from "@/components/residence/lowpoly-residence-scene";
 
 type RainLayer = { source: AudioBufferSourceNode; gain: GainNode };
 type AmbientAudio = {
@@ -126,16 +126,16 @@ export function CharacterRoomDemo({
   useEffect(() => {
     const container = mount.current;
     if (!container) return;
-    return mountPixelResidenceScene({
+    return mountLowPolyResidenceScene({
       container,
       characterName,
-      appearance: residence?.appearance,
+      assetBasePath: basePath,
       activityRef,
       weatherRef,
       nightRef,
       waveUntil,
     });
-  }, [characterName, residence?.appearance]);
+  }, [basePath, characterName]);
 
   useEffect(() => {
     weatherRef.current = weather;
