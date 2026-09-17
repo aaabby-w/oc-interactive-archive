@@ -236,7 +236,7 @@ export function CharacterRoomDemo({
 
   return (
     <section className="residence-section" aria-labelledby="residence-title">
-      <div className="residence-intro" data-global-parallax="5">
+      <div className="residence-intro" data-text-reveal>
         <p className="section-index">{siteCopy.residence.eyebrow}</p>
         <h2 id="residence-title">{siteCopy.residence.title}</h2>
         <p>{siteCopy.residence.intro}</p>
@@ -256,6 +256,7 @@ export function CharacterRoomDemo({
         </div>
         <button
           className="residence-music"
+          data-magnetic
           type="button"
           onClick={toggleAmbient}
           aria-pressed={musicOn}
@@ -271,7 +272,7 @@ export function CharacterRoomDemo({
         </div>
         <div className="residence-dialogue">
           <p aria-live="polite">{reply}</p>
-          <button className="residence-greet" type="button" onClick={greet}>
+          <button className="residence-greet" type="button" onClick={greet} data-magnetic>
             <span aria-hidden="true">⌁</span>
             <span>{siteCopy.residence.greet}<small>{siteCopy.residence.greetEn}</small></span>
           </button>

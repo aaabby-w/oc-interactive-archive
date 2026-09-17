@@ -9,14 +9,14 @@ export default function CharactersPage() {
     <RouteShell section="characters">
       <div className="character-list">
         {characters.map((entry) => (
-          <article className="character-row" key={entry.character.slug}>
+          <article className="character-row" key={entry.character.slug} data-tilt-card>
             <span className="character-order">{String(entry.order).padStart(2, "0")}</span>
             <div className="character-name">
               <h2>{entry.character.displayName.zh}</h2>
               <p>{entry.character.displayName.en}</p>
             </div>
             <p className="character-summary">{entry.character.summary.zh}</p>
-            <Link href={`/characters/${entry.character.slug}`}>{siteCopy.common.openRecord} <span aria-hidden="true">↗</span></Link>
+            <Link href={`/characters/${entry.character.slug}`} data-magnetic>{siteCopy.common.openRecord} <span aria-hidden="true">↗</span></Link>
           </article>
         ))}
       </div>

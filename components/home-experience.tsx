@@ -42,11 +42,12 @@ export function HomeExperience({
               anticipatePin: 1,
             },
           })
-          .to(".hero-art-image", { scale: 1.15, yPercent: 5, ease: "none" }, 0)
-          .to(".hero-art-haze", { opacity: 0.18, ease: "none" }, 0)
-          .to(".hero-title-line", { yPercent: -36, opacity: 0, stagger: 0.06, ease: "none" }, 0.08)
-          .to(".hero-caption", { y: -50, opacity: 0, ease: "none" }, 0.12)
-          .to(".scroll-cue", { opacity: 0, y: 24, ease: "none" }, 0);
+          .to(".hero-art-image", { scale: 1.3, ease: "none" }, 0)
+          .to(".hero-art-haze", { opacity: 0.24, ease: "none" }, 0)
+          .to(".hero-tunnel span", { scale: 3.4, opacity: 0, stagger: 0.08, ease: "none" }, 0)
+          .to(".hero-title", { scale: 0.78, opacity: 0, filter: "blur(5px)", ease: "none" }, 0.08)
+          .to(".hero-caption", { scale: 0.9, opacity: 0, ease: "none" }, 0.12)
+          .to(".scroll-cue", { opacity: 0, scale: 1.4, ease: "none" }, 0);
 
         gsap.utils.toArray<HTMLElement>("[data-reveal]").forEach((element) => {
           gsap.fromTo(
@@ -67,23 +68,6 @@ export function HomeExperience({
           );
         });
 
-        gsap.utils.toArray<HTMLElement>("[data-parallax]").forEach((element) => {
-          const amount = Number(element.dataset.parallax ?? 12);
-          gsap.fromTo(
-            element,
-            { yPercent: -amount },
-            {
-              yPercent: amount,
-              ease: "none",
-              scrollTrigger: {
-                trigger: element.closest("section") ?? element,
-                start: "top bottom",
-                end: "bottom top",
-                scrub: 1,
-              },
-            },
-          );
-        });
       }
     }, container);
 
@@ -95,7 +79,7 @@ export function HomeExperience({
   return (
     <div className="home-experience" ref={root}>
       <section className="art-hero" aria-labelledby="home-title">
-        <div className="hero-art" data-tilt-depth="1" aria-hidden="true">
+        <div className="hero-art" aria-hidden="true">
           <Image
             className="hero-art-image"
             src={heroImage}
@@ -105,6 +89,12 @@ export function HomeExperience({
             priority
           />
           <div className="hero-art-haze" />
+        </div>
+
+        <div className="hero-tunnel" aria-hidden="true">
+          <span />
+          <span />
+          <span />
         </div>
 
         <div className="hero-title" data-cursor-focus>
@@ -133,10 +123,10 @@ export function HomeExperience({
       </section>
 
       <section className="story-section character-chapter">
-        <div className="chapter-watermark" data-parallax="10" aria-hidden="true">
+        <div className="chapter-watermark" aria-hidden="true">
           01
         </div>
-        <div className="chapter-art-window" data-reveal>
+        <div className="chapter-art-window" data-reveal data-tilt-card>
           <Image
             src={heroImage}
             alt=""
@@ -157,7 +147,7 @@ export function HomeExperience({
       </section>
 
       <section className="story-section world-chapter">
-        <div className="world-orbit" data-parallax="18" aria-hidden="true">
+        <div className="world-orbit" aria-hidden="true">
           <span />
           <span />
           <span />
@@ -169,7 +159,7 @@ export function HomeExperience({
         </div>
         <nav className="chapter-links" aria-label={siteCopy.home.explore} data-reveal>
           {siteCopy.home.portals.map((portal, index) => (
-            <Link key={portal.href} href={portal.href}>
+            <Link key={portal.href} href={portal.href} data-magnetic>
               <span>{String(index + 1).padStart(2, "0")}</span>
               <b>{portal.zh}</b>
               <small>{portal.en}</small>

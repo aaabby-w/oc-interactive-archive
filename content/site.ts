@@ -15,17 +15,6 @@ export const siteCopy = {
     toLight: "切换为浅色模式",
     toDark: "切换为深色模式",
   },
-  settings: {
-    label: "页面设置",
-    title: "设置",
-    titleEn: "SETTINGS",
-    parallax: "视差效果",
-    parallaxEn: "DEPTH MOTION",
-    enabled: "开启",
-    disabled: "关闭",
-    denied: "未授权",
-    unsupported: "设备不支持",
-  },
   home: {
     issue: "ISSUE 00",
     classification: "ORIGINAL CHARACTER / PRIVATE ARCHIVE",

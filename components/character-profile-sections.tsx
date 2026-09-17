@@ -18,7 +18,7 @@ export function CharacterShowcase({ character }: { character: Character }) {
 
   return (
     <section className="character-showcase" aria-labelledby={headingId}>
-      <header className="showcase-heading" data-global-parallax="3">
+      <header className="showcase-heading" data-text-reveal>
         <p>{siteCopy.characterPage.showcase.eyebrow}</p>
         <h2 id={headingId}>{siteCopy.characterPage.showcase.title}</h2>
         <span>{siteCopy.characterPage.showcase.intro}</span>
@@ -32,7 +32,7 @@ export function CharacterShowcase({ character }: { character: Character }) {
 
           return (
             <figure className="showcase-figure" data-format={format} key={slot.code}>
-              <div className="showcase-media" data-global-parallax={index % 2 === 0 ? "2" : "-2"}>
+              <div className="showcase-media" data-tilt-card>
                 {item && src ? (
                   <Image
                     src={src}
@@ -68,13 +68,13 @@ export function CharacterArchiveGateway({ character }: { character: Character })
       <div className="archive-gateway-index" aria-hidden="true">
         <span>TEXT</span><i /><span>FILE</span>
       </div>
-      <div className="archive-gateway-copy" data-global-parallax="4">
+      <div className="archive-gateway-copy" data-text-reveal>
         <p>{siteCopy.characterPage.archive.eyebrow}</p>
         <h2 id={headingId}>{siteCopy.characterPage.archive.title}</h2>
         <span>{siteCopy.characterPage.archive.intro}</span>
         <small>{siteCopy.characterPage.archive.pending}</small>
       </div>
-      <Link className="archive-gateway-link" href="/archive">
+      <Link className="archive-gateway-link" href="/archive" data-magnetic>
         <span>{siteCopy.characterPage.archive.open}<small>{siteCopy.characterPage.archive.openEn}</small></span>
         <b aria-hidden="true">↗</b>
       </Link>

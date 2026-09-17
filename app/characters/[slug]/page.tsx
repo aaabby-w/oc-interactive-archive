@@ -35,7 +35,7 @@ export default async function CharacterPage({ params }: CharacterPageProps) {
     <main className="profile-page">
       <SiteHeader />
       <section className="profile-art" aria-labelledby="profile-title">
-        <div className="profile-art-media" data-tilt-depth="1">
+        <div className="profile-art-media">
           <Image
             className="profile-art-image"
             src={artwork}
@@ -48,9 +48,9 @@ export default async function CharacterPage({ params }: CharacterPageProps) {
         </div>
         <div className="profile-art-overlay" aria-hidden="true" />
 
-        <div className="profile-art-title" data-global-parallax="6">
+        <div className="profile-art-title" data-text-reveal>
           <p>{siteCopy.common.profile}</p>
-          <h1 id="profile-title">{entry.character.displayName.zh}</h1>
+          <h1 id="profile-title" data-scramble>{entry.character.displayName.zh}</h1>
           <span>{entry.character.displayName.en}</span>
         </div>
 
