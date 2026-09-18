@@ -1,6 +1,16 @@
 # Residence music credits
 
-- `overworld.mp3` — “Overworld (BGM)” by Another Page Studio / IntelligentGene. CC0. Source: https://opengameart.org/content/overworld-bgm
-- `calm-loop.mp3` — “Calm Loop” by wipics. CC0 / Public Domain. Source: https://opengameart.org/content/calm-loop
+The residence playlist now uses the six tracks published with
+[`annac777/xi4u`](https://github.com/annac777/xi4u):
 
-Both files are self-hosted by this project. Attribution is included here even though the CC0 license does not require it.
+- `xi4u/spring-rain-1.m4a`
+- `xi4u/spring-rain-2.m4a`
+- `xi4u/cicada-veranda-1.m4a`
+- `xi4u/cicada-veranda-2.m4a`
+- `xi4u/maple-room-1.m4a`
+- `xi4u/maple-room-2.m4a`
+
+The upstream repository is Copyright (c) 2026 AC and distributed under the
+MIT License. The required copyright and permission notice is preserved in
+`xi4u/LICENSE`. The files are self-hosted; playback does not depend on an
+external music service.

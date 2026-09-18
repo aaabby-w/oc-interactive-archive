@@ -21,7 +21,14 @@ type AmbientAudio = {
   rain: RainLayer | null;
 };
 
-const musicTracks = ["/audio/overworld.mp3", "/audio/calm-loop.mp3"];
+const musicTracks = [
+  "/audio/xi4u/spring-rain-1.m4a",
+  "/audio/xi4u/spring-rain-2.m4a",
+  "/audio/xi4u/cicada-veranda-1.m4a",
+  "/audio/xi4u/cicada-veranda-2.m4a",
+  "/audio/xi4u/maple-room-1.m4a",
+  "/audio/xi4u/maple-room-2.m4a",
+];
 
 function stopRainLayer(audio: AmbientAudio) {
   if (!audio.rain) return;

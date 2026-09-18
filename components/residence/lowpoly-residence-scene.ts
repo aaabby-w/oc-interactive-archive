@@ -3,7 +3,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
 import type { ResidenceActivity } from "@/content/characters/types";
 import type { ResidenceWeather } from "@/lib/residence-weather";
-import { createWindowWeather } from "./window-weather";
+import { createResidenceEnvironment } from "./residence-environment";
 import { createCompanionCat, type CatAnchors, type CatSpot } from "./companion-cat";
 import { restOn, surfaceAt } from "./placement";
 
@@ -49,7 +49,6 @@ export function mountLowPolyResidenceScene({
 }: SceneOptions) {
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(palette.background);
   const camera = new THREE.OrthographicCamera(-6, 6, 4.5, -4.5, 0.1, 80);
   camera.position.set(11.5, 10.5, 14.5);
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
@@ -59,7 +58,7 @@ export function mountLowPolyResidenceScene({
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.2;
   renderer.domElement.setAttribute("role", "img");
-  renderer.domElement.setAttribute("aria-label", `${characterName}的低多边形居所与双色猫，可拖动查看；天气在窗内变化。`);
+  renderer.domElement.setAttribute("aria-label", `${characterName}的插画式居所、双色猫与实体窗外环境，可拖动查看。`);
   container.appendChild(renderer.domElement);
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
@@ -68,8 +67,11 @@ export function mountLowPolyResidenceScene({
   controls.enableRotate = !reduceMotion;
   controls.minZoom = 0.78;
   controls.maxZoom = 2.4;
-  controls.minPolarAngle = 0.06;
-  controls.maxPolarAngle = Math.PI - 0.06;
+  // Keep every orbit above the terrain so the underside of the residence can
+  // never enter the frame. These limits follow the reference diorama's camera
+  // discipline while preserving this room's own composition.
+  controls.minPolarAngle = 0.28;
+  controls.maxPolarAngle = 1.38;
   controls.target.set(0, 1.2, 0);
 
   const hemisphere = new THREE.HemisphereLight(0xfff4e0, 0x566c74, 2.1);
@@ -89,6 +91,7 @@ export function mountLowPolyResidenceScene({
   const greetingLight = new THREE.PointLight(0x8ed9c2, 0, 8, 2);
   greetingLight.position.set(0.2, 3.4, -3.4);
   scene.add(greetingLight);
+  const environment = createResidenceEnvironment(scene);
   const box = (size: [number, number, number], position: [number, number, number], color: number, parent: THREE.Object3D = scene) => {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), new THREE.MeshStandardMaterial({ color, roughness: 0.8 }));
     mesh.position.set(...position);
@@ -96,11 +99,6 @@ export function mountLowPolyResidenceScene({
     parent.add(mesh);
     return mesh;
   };
-  const grid = new THREE.GridHelper(34, 34, palette.grid, palette.grid);
-  grid.position.y = -0.47;
-  (grid.material as THREE.Material).transparent = true;
-  (grid.material as THREE.Material).opacity = 0.3;
-  scene.add(grid);
   box([12.2, 0.38, 8.8], [0, -0.24, 0], palette.peachDeep);
   box([11.85, 0.18, 8.45], [0, 0.04, 0], palette.peach);
   // Real opening: x [-1.70,3.00], y [1.645,4.195]. No wall behind glass.
@@ -121,8 +119,21 @@ export function mountLowPolyResidenceScene({
   scene.add(windowGroup);
   for (const x of [-2.29, 2.29]) box([0.12, 2.55, 0.35], [x, 0, -0.08], palette.charcoal, windowGroup);
   for (const y of [-1.215, 1.215]) box([4.7, 0.12, 0.35], [0, y, -0.08], palette.charcoal, windowGroup);
-  const weatherWindow = createWindowWeather();
-  windowGroup.add(weatherWindow.pane);
+  const glassMaterial = new THREE.MeshPhysicalMaterial({
+    color: 0xb8d6d1,
+    transparent: true,
+    opacity: 0.12,
+    roughness: 0.16,
+    metalness: 0,
+    transmission: 0.18,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  const glass = new THREE.Mesh(new THREE.PlaneGeometry(4.44, 2.28), glassMaterial);
+  glass.name = "Window_Glass";
+  glass.position.z = -0.02;
+  glass.receiveShadow = true;
+  windowGroup.add(glass);
   box([0.09, 2.25, 0.18], [0, 0, 0.2], palette.warmWhite, windowGroup);
   box([4.38, 0.09, 0.18], [0, 0, 0.2], palette.warmWhite, windowGroup);
   box([0.09, 2.32, 0.10], [0, 0, -0.24], palette.warmWhite, windowGroup);
@@ -293,7 +304,7 @@ export function mountLowPolyResidenceScene({
     if (activity === "cat") spot = "floor";
     if (activity === "work" && spot === "desk") spot = "sofa";
     cat?.update(delta, spot, greeting, reduceMotion);
-    weatherWindow.update(weather, night, reduceMotion ? 0 : elapsed);
+    environment.update(weather, night, reduceMotion ? 0 : elapsed, reduceMotion);
     controls.update();
     renderer.render(scene, camera);
   };
@@ -306,7 +317,7 @@ export function mountLowPolyResidenceScene({
     intersection.disconnect();
     controls.dispose();
     cat?.dispose();
-    weatherWindow.dispose();
+    environment.dispose();
     disposeObject(scene);
     renderer.dispose();
     renderer.domElement.remove();

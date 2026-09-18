@@ -1301,11 +1301,11 @@ html.theme-changing .theme-icon {
 .residence-section {
   position: relative;
   z-index: 3;
-  display: grid;
-  grid-template-columns: minmax(250px, 0.3fr) minmax(590px, 1fr);
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: clamp(44px, 7vw, 118px);
-  min-height: 112svh;
+  gap: clamp(52px, 6vw, 92px);
+  min-height: auto;
   padding: clamp(116px, 12vw, 184px) clamp(30px, 7vw, 116px);
   overflow: hidden;
   background:
@@ -1330,6 +1330,7 @@ html.theme-changing .theme-icon {
 .residence-intro {
   position: relative;
   z-index: 2;
+  width: min(100%, 1320px);
 }
 
 .residence-intro h2 {
@@ -1342,6 +1343,7 @@ html.theme-changing .theme-icon {
 }
 
 .residence-intro > p:last-child {
+  max-width: 620px;
   margin: 38px 0 0;
   color: var(--mist);
   font-family: var(--font-display);
@@ -1352,7 +1354,8 @@ html.theme-changing .theme-icon {
 .residence-board {
   position: relative;
   z-index: 2;
-  width: 100%;
+  width: min(100%, 1320px);
+  margin: 0 auto;
   padding: clamp(27px, 3.2vw, 48px);
   border: 12px solid #eadfcd;
   outline: 1px solid rgba(92, 68, 45, 0.22);

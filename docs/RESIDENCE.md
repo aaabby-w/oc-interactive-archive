@@ -53,6 +53,20 @@ its layout or adding its simulation features. Cat core volumes are joined into
 a rounded continuous surface, with transferred normalized skin weights and
 smooth normals; original character proportions and the 25-bone rig are retained.
 
+September 18 environment pass: the recessed canvas weather card was replaced by
+a scene-wide 3D exterior. Terrain continues beneath and beyond the room; layered
+hills, trees, clouds, sun/moon, rainbow and rain occupy real depth bands and
+share the room's lighting and shadow system. The window remains a physical
+opening with casing, sill, mullions and transparent glass. Orbit polar limits
+keep the camera above the exterior ground at every angle, so the residence
+underside cannot enter the frame. The music button now cycles through the six
+tracks distributed with `annac777/xi4u`; its MIT notice is preserved beside the
+self-hosted files.
+
+The residence section uses the same reading order at every breakpoint: section
+label, title and introduction first, followed by the complete observation board.
+The desktop layout no longer places the board beside the copy.
+
 Verification: `scripts/verify-residence-layout.mjs` measures shipped furniture
 contacts/door clearance; `scripts/verify-residence-cat.py` checks original skin
 weights, topology, UVs and every animation frame's contact plane in Blender.

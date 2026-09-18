@@ -7,6 +7,7 @@ import { restOn, surfaceAt } from '../components/residence/placement.ts';
 // Read the actual room declarations, so this audit measures shipped OBJ assets
 // at the shipped transforms rather than testing a second set of invented boxes.
 const source = fs.readFileSync(new URL('../components/residence/lowpoly-residence-scene.ts', import.meta.url), 'utf8');
+const environmentSource = fs.readFileSync(new URL('../components/residence/residence-environment.ts', import.meta.url), 'utf8');
 const objects = {};
 for (const match of source.matchAll(/loadAsset\((\{ name: "[^\n]+?\})\)/g)) {
   const spec = Function(`"use strict"; return (${match[1]});`)();
@@ -66,3 +67,9 @@ const cast=(from,to)=>new THREE.Raycaster(new THREE.Vector3(...from),new THREE.V
 assert(cast([.65,2.92,-6],[0,0,1]).length===0,'Window opening blocked by a wall');
 assert(cast([0,4,1.12],[-1,0,0]).length>0,'Gap remains above door at lintel join');
 console.log('PASS: single integrated pillow, open window aperture, continuous door lintel');
+
+const maxPolar = Number(source.match(/controls\.maxPolarAngle = ([0-9.]+);/)?.[1]);
+assert(Number.isFinite(maxPolar) && maxPolar < Math.PI / 2, 'Camera can rotate below the residence ground plane');
+assert.match(environmentSource, /Exterior_GroundAndUndersideScreen/, 'Scene-wide ground screen is missing');
+assert.doesNotMatch(source, /createWindowWeather|Window_RecessedWeather/, 'Flat window weather card is still mounted');
+console.log(`PASS: camera remains above ground (max polar ${maxPolar}) and weather uses the 3D exterior`);
