@@ -42,6 +42,22 @@ export const siteCopy = {
     footerIndex: "ARCHIVE / 000—001",
     footerState: "INITIAL RECORD",
   },
+  worldAtlas: {
+    eyebrow: "WORLD RECORD / EXPLORATION PLATE",
+    title: "世界观测图",
+    intro: "移动到标记点，查看等待归档的区域。正式地图与地名加入后，将沿用同一套探索方式。",
+    mapLabel: "可探索的世界观区域图",
+    hint: "悬停或点击标记 · HOVER / TAP TO TRACE",
+    footer: "TEMPORARY CARTOGRAPHY · NOT CANONICAL",
+    regions: [
+      { code: "REG. 01", name: "未命名区域 01", en: "UNRECORDED REGION", x: 20, y: 48 },
+      { code: "REG. 02", name: "未命名区域 02", en: "UNRECORDED REGION", x: 36, y: 38 },
+      { code: "REG. 03", name: "未命名区域 03", en: "UNRECORDED REGION", x: 49, y: 53 },
+      { code: "REG. 04", name: "未命名区域 04", en: "UNRECORDED REGION", x: 62, y: 34 },
+      { code: "REG. 05", name: "未命名区域 05", en: "UNRECORDED REGION", x: 75, y: 52 },
+      { code: "REG. 06", name: "未命名区域 06", en: "UNRECORDED REGION", x: 87, y: 39 },
+    ],
+  },
   routes: {
     characters: {
       index: "01",

@@ -24,7 +24,7 @@ for (const match of source.matchAll(/loadAsset\((\{ name: "[^\n]+?\})\)/g)) {
   pivot.add(object); pivot.updateMatrixWorld(true); objects[spec.name] = pivot;
 }
 for (const [prop, support, ceiling] of [
-  ['pillow','bedSingle'], ['laptop','desk'], ['lampRoundTable','desk'],
+  ['laptop','desk'], ['lampRoundTable','desk'],
   ['tableCoffee','rugRectangle'], ['radio','tableCoffee'], ['books','bookcaseOpen',1.6],
 ]) {
   const height = restOn(objects[prop], objects[support], ceiling);
@@ -52,3 +52,17 @@ for (const [name,x,z] of [['bedSingle',-3.25,-1.5],['desk',4.45,-2.85],['loungeS
   assert(surfaceAt(objects[name],x,z)!==undefined, `Cat has no support on ${name}`);
 }
 console.log('PASS: measured prop contact, rear-facing headboard, clear entrance, cat support surfaces');
+
+assert(!objects.pillow, 'Do not duplicate the pillow already included in bedSingle');
+const walls = new THREE.Group();
+const wallSource=source.slice(source.indexOf('// Real opening:'),source.indexOf('const windowGroup'));
+for (const match of wallSource.matchAll(/box\((\[[^\]]+\]), (\[[^\]]+\]), palette\./g)) {
+  const size=JSON.parse(match[1]), position=JSON.parse(match[2]);
+  const mesh=new THREE.Mesh(new THREE.BoxGeometry(...size),new THREE.MeshBasicMaterial({side:THREE.DoubleSide}));
+  mesh.position.set(...position); walls.add(mesh);
+}
+walls.updateMatrixWorld(true);
+const cast=(from,to)=>new THREE.Raycaster(new THREE.Vector3(...from),new THREE.Vector3(...to)).intersectObject(walls,true);
+assert(cast([.65,2.92,-6],[0,0,1]).length===0,'Window opening blocked by a wall');
+assert(cast([0,4,1.12],[-1,0,0]).length>0,'Gap remains above door at lintel join');
+console.log('PASS: single integrated pillow, open window aperture, continuous door lintel');

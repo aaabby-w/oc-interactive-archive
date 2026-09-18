@@ -34,6 +34,8 @@ Implement modular profile sections and desktop/mobile character selectors.
 
 ## Phase 5 — world, archive, and gallery
 
+Status: **active / world map interaction first pass by explicit request**
+
 Create world-taxonomy views, medium-specific archive documents, and a metadata-aware full-screen gallery.
 
 ## Phase 6 — Residence integration

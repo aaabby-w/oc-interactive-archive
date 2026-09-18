@@ -9,10 +9,10 @@ export function createWindowWeather() {
   const context = canvas.getContext("2d")!;
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  const material = new THREE.MeshBasicMaterial({ map: texture, toneMapped: false });
-  const pane = new THREE.Mesh(new THREE.PlaneGeometry(4.34, 2.2), material);
+  const material = new THREE.MeshBasicMaterial({ map: texture, toneMapped: false, side: THREE.DoubleSide });
+  const pane = new THREE.Mesh(new THREE.PlaneGeometry(4.48, 2.32), material);
   pane.name = "Window_RecessedWeather";
-  pane.position.z = 0.072;
+  pane.position.z = -0.08;
   let lastFrame = -1;
   let lastKey = "";
   const circle = (x: number, y: number, radius: number, color: string) => {

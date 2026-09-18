@@ -25,10 +25,10 @@ type AssetSpec = {
   tilt?: number;
 };
 const palette = {
-  background: 0x223642, grid: 0x46606b, cream: 0xfff4db,
-  warmWhite: 0xfffbef, peach: 0xf3bd79, peachDeep: 0xd79055,
-  coral: 0xeb786d, mint: 0x79b9a7, blue: 0x79aeba,
-  wood: 0xa96845, charcoal: 0x34464c, leaf: 0x5b8d62,
+  background: 0xdce6dc, grid: 0xc2cec3, cream: 0xe9e6d1,
+  warmWhite: 0xf7f3e4, peach: 0xd8c49b, peachDeep: 0xb59a74,
+  coral: 0xb6bda0, mint: 0x88ac9b, blue: 0x749c9b,
+  wood: 0x806b50, charcoal: 0x3b5754, leaf: 0x648866,
 };
 function hashString(value: string) {
   let hash = 2166136261;
@@ -80,6 +80,7 @@ export function mountLowPolyResidenceScene({
   keyLight.shadow.mapSize.set(2048, 2048);
   keyLight.shadow.bias = -0.0002;
   keyLight.shadow.normalBias = 0.015;
+  keyLight.shadow.radius = 2;
   Object.assign(keyLight.shadow.camera, { left: -9, right: 9, top: 9, bottom: -9 });
   scene.add(keyLight);
   const deskLight = new THREE.PointLight(0xffce91, 0.25, 7, 2);
@@ -102,10 +103,14 @@ export function mountLowPolyResidenceScene({
   scene.add(grid);
   box([12.2, 0.38, 8.8], [0, -0.24, 0], palette.peachDeep);
   box([11.85, 0.18, 8.45], [0, 0.04, 0], palette.peach);
-  box([11.85, 4.9, 0.2], [0, 2.5, -4.12], palette.cream);
+  // Real opening: x [-1.70,3.00], y [1.645,4.195]. No wall behind glass.
+  box([4.225, 4.9, 0.2], [-3.8125, 2.5, -4.12], palette.cream);
+  box([2.925, 4.9, 0.2], [4.4625, 2.5, -4.12], palette.cream);
+  box([4.7, 1.595, 0.2], [0.65, 0.8475, -4.12], palette.cream);
+  box([4.7, 0.755, 0.2], [0.65, 4.5725, -4.12], palette.cream);
   box([0.2, 4.9, 5.2], [-5.92, 2.5, -1.52], palette.cream);
   box([0.2, 4.9, 1.12], [-5.92, 2.5, 3.66], palette.cream);
-  box([0.2, 2.0, 1.9], [-5.92, 3.94, 2.15], palette.cream);
+  box([0.2, 2.0, 2.02], [-5.92, 3.95, 2.09], palette.cream);
   box([11.92, 0.16, 0.26], [0, 0.9, -4], palette.wood);
   box([0.26, 0.16, 5.2], [-5.8, 0.9, -1.52], palette.wood);
   box([0.26, 0.16, 1.12], [-5.8, 0.9, 3.66], palette.wood);
@@ -114,12 +119,27 @@ export function mountLowPolyResidenceScene({
   windowGroup.name = "Window";
   windowGroup.position.set(0.65, 2.92, -3.99);
   scene.add(windowGroup);
-  box([4.7, 2.55, 0.11], [0, 0, 0], palette.charcoal, windowGroup);
+  for (const x of [-2.29, 2.29]) box([0.12, 2.55, 0.35], [x, 0, -0.08], palette.charcoal, windowGroup);
+  for (const y of [-1.215, 1.215]) box([4.7, 0.12, 0.35], [0, y, -0.08], palette.charcoal, windowGroup);
   const weatherWindow = createWindowWeather();
   windowGroup.add(weatherWindow.pane);
   box([0.09, 2.25, 0.18], [0, 0, 0.2], palette.warmWhite, windowGroup);
   box([4.38, 0.09, 0.18], [0, 0, 0.2], palette.warmWhite, windowGroup);
+  box([0.09, 2.32, 0.10], [0, 0, -0.24], palette.warmWhite, windowGroup);
+  box([4.48, 0.09, 0.10], [0, 0, -0.24], palette.warmWhite, windowGroup);
   box([5, 0.18, 0.42], [0, -1.34, 0.28], palette.wood, windowGroup);
+
+  // Door and casing are constructed to the actual opening, on both wall faces.
+  const door = new THREE.Group();
+  door.name = "Door"; door.position.set(-5.92, 0.14, 2.09); scene.add(door);
+  for (const z of [-.98,.98]) box([.34,2.86,.12],[0,1.43,z],palette.wood,door);
+  box([.34,.14,2.08],[0,2.87,0],palette.wood,door);
+  box([.42,.05,1.9],[0,.025,0],palette.wood,door);
+  box([.12,2.75,1.82],[0,1.40,0],palette.mint,door);
+  for (const x of [-.075,.075]) {
+    for (const y of [.77,2.0]) box([.035,.92,1.49],[x,y,0],palette.cream,door);
+    box([.13,.08,.23],[x*1.5,1.35,.62],palette.peachDeep,door);
+  }
 
   let disposed = false;
   const loads: Promise<void>[] = [];
@@ -172,7 +192,7 @@ export function mountLowPolyResidenceScene({
 
   // Headboard against the back wall. Keep the left entrance and aisle clear.
   const bed = loadAsset({ name: "bedSingle", position: [-3.25, 0.14, -2.1], size: 3.45, rotation: Math.PI });
-  const pillow = loadAsset({ name: "pillow", position: [-3.25, 0, -3.1], size: 1.03, rotation: Math.PI, tilt: -Math.PI / 2 });
+  // bedSingle already includes its resting pillow; do not stack a second one.
   const desk = loadAsset({ name: "desk", position: [3.65, 0.14, -2.9], size: 2.8, rotation: Math.PI });
   const chair = loadAsset({ name: "chairDesk", position: [3.2, 0.14, -1.45], size: 1.25, rotation: Math.PI });
   const laptop = loadAsset({ name: "laptop", position: [3.35, 0, -3.12], size: 0.72, rotation: Math.PI });
@@ -184,7 +204,6 @@ export function mountLowPolyResidenceScene({
   const table = loadAsset({ name: "tableCoffee", position: [0.5, 0.17, 1.2], size: 1.95 });
   const radio = loadAsset({ name: "radio", position: [0.95, 0, 1.22], size: 0.49, rotation: Math.PI });
   loadAsset({ name: "pottedPlant", position: [4.95, 0.14, 2.7], size: 1.42 });
-  loadAsset({ name: "doorwayOpen", position: [-5.82, 0.14, 2.15], size: 2.95, rotation: Math.PI / 2 });
   const readingBook = new THREE.Group();
   readingBook.name = "ReadingBook";
   readingBook.position.set(-0.08, 0, 1.12);
@@ -205,7 +224,6 @@ export function mountLowPolyResidenceScene({
   void Promise.all(loads).then(async () => {
     if (disposed) return;
     scene.updateMatrixWorld(true);
-    restOn(pillow, bed);
     restOn(laptop, desk);
     restOn(lamp, desk);
     restOn(table, rug);
@@ -224,6 +242,7 @@ export function mountLowPolyResidenceScene({
     scene.add(cat.root);
     roomReady = true;
     container.dataset.sceneReady = "true";
+    renderer.render(scene, camera);
   }).catch((error) => {
     if (!disposed) { container.dataset.sceneReady = "error"; console.error("Residence assets failed to load", error); }
   });

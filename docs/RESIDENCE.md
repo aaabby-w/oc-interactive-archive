@@ -44,6 +44,15 @@ These do not block Phase 1.
 - Offscreen scenes pause rendering. Reduced motion uses a stationary pose and
   static weather frame. All generated model resources are disposed on unmount.
 
+September 17 refinement: the bed retains its built-in pillow only (the duplicate
+standalone pillow was removed). Rear wall segments surround an actual window
+opening; window casing and mullions exist on both sides. The left door has a
+continuous lintel, thick casing, paneled leaf and handles on both faces. Palette
+is now mineral cream/sage/wood, inspired by the xi4u reference without copying
+its layout or adding its simulation features. Cat core volumes are joined into
+a rounded continuous surface, with transferred normalized skin weights and
+smooth normals; original character proportions and the 25-bone rig are retained.
+
 Verification: `scripts/verify-residence-layout.mjs` measures shipped furniture
 contacts/door clearance; `scripts/verify-residence-cat.py` checks original skin
 weights, topology, UVs and every animation frame's contact plane in Blender.

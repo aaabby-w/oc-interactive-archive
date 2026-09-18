@@ -101,6 +101,7 @@ export function HomeExperience({
           <p className="hero-kicker">{siteCopy.home.classification}</p>
           <h1 id="home-title">
             <span className="hero-title-line">{siteCopy.identity.zh}</span>
+            <i className="hero-lockup-rule" aria-hidden="true"><b /></i>
             <strong className="hero-title-line">{siteCopy.identity.en}</strong>
           </h1>
         </div>

@@ -5,6 +5,7 @@ atlas and animation keys below are authored here from simple mathematical forms.
 Blender coordinates: X right, -Y forward, Z up; export converts to glTF Y-up.
 """
 import bpy
+import bmesh
 import math
 from pathlib import Path
 from mathutils import Vector
@@ -45,9 +46,12 @@ tex.interpolation = 'Linear'
 mat.node_tree.links.new(tex.outputs['Color'], bsdf.inputs['Base Color'])
 
 vertices, faces, uv_faces, weights = [], [], [], []
+fused_vertices = []
+fuse_surface = True
 def add_mesh(verts, polys, color, binding, uvs=None):
     offset = len(vertices)
     vertices.extend(verts)
+    fused_vertices.extend([fuse_surface] * len(verts))
     weights.extend([binding(v) if callable(binding) else binding.copy() for v in verts])
     for poly in polys:
         faces.append([offset + i for i in poly])
@@ -56,6 +60,8 @@ def add_mesh(verts, polys, color, binding, uvs=None):
         uv_faces.append([((tile_x + .08 + .84*u) / 4, (tile_y + .08 + .84*v) / 4) for u,v in coords])
 
 def ellipsoid(center, radii, color, binding, sides=14, rings=9):
+    sides = max(24, sides * 2)
+    rings = max(16, rings * 2)
     vv, ff, uv = [], [], []
     for j in range(rings + 1):
         phi = math.pi * j / rings
@@ -81,6 +87,7 @@ ellipsoid((0,-.28,.64), (.295,.27,.34), 3, {'Chest':1}, 16, 9)
 ellipsoid((0,-.47,.88), (.35,.298,.32), 1, {'Head':1}, 20, 13)
 ellipsoid((0,-.646,.73), (.265,.168,.145), 3, {'Head':1}, 16, 8)
 # White inverted-V blaze, on the head surface, made from new vertices.
+fuse_surface = False
 vv, ff, uv = [], [], []
 for row in range(9):
     z = 1.154 - row*.041
@@ -94,26 +101,36 @@ for row in range(8):
     for col in range(6):
         a=row*7+col
         ff.extend([(a,a+7,a+1),(a+1,a+7,a+8)])
-add_mesh(vv,ff,3,{'Head':1},uv)
+# Facial blaze is painted onto the fused surface below, not a raised patch.
 for side in [-1,1]:
+    fuse_surface = True
     ellipsoid((side*.096,-.758,.77), (.123,.079,.095), 3, {'Head':1}, 12, 8)
-    ellipsoid((side*.166,-.720,.955), (.088,.031,.10), 2, {'Head':1}, 16, 10)
-    ellipsoid((side*.166,-.741,.955), (.074,.023,.087), 5, {'Head':1}, 16, 10)
-    ellipsoid((side*.166,-.759,.954), (.05,.011,.068), 6, {'Head':1}, 14, 9)
-    ellipsoid((side*.145,-.77,.985), (.018,.006,.022), 7, {'Head':1}, 10, 7)
-    ellipsoid((side*.184,-.770,.929), (.008,.004,.009), 14, {'Head':1}, 8, 6)
-    ellipsoid((side*.257,-.685,.837), (.045,.008,.022), 10, {'Head':1}, 10, 6)
-    # Volume ears with independently weighted inner ear panels.
-    ear = [(side*.12,-.46,1.10),(side*.32,-.39,1.07),(side*.293,-.40,1.38),(side*.225,-.23,1.12)]
-    add_mesh(ear,[(0,1,2),(0,2,3),(1,3,2),(0,3,1)],1,{f'Ear_{side}':1})
-    inner=[(side*.158,-.462,1.12),(side*.291,-.417,1.117),(side*.279,-.418,1.313)]
-    add_mesh(inner,[(0,1,2)],4,{f'Ear_{side}':1})
+    # A shallow skin collar blends into the head; the blue lens sits inside it.
+    ellipsoid((side*.166,-.706,.955), (.097,.036,.109), 1, {'Head':1}, 16, 10)
+    fuse_surface = False
+    ellipsoid((side*.166,-.730,.955), (.075,.016,.088), 5, {'Head':1}, 16, 10)
+    ellipsoid((side*.166,-.744,.954), (.05,.008,.068), 6, {'Head':1}, 14, 9)
+    ellipsoid((side*.145,-.752,.985), (.018,.004,.022), 7, {'Head':1}, 10, 7)
+    ellipsoid((side*.184,-.752,.929), (.008,.003,.009), 14, {'Head':1}, 8, 6)
+    # Blush is surface color rather than protruding cheek disks.
+    # Rounded tapered ear volume, deeply rooted in the head; no floating triangle.
+    fuse_surface = True
+    for j in range(9):
+        t=j/8
+        ellipsoid((side*(.216+.066*t),-.365-.035*t,1.075+.275*t),
+                  (.118*(1-t)+.025,.09*(1-t)+.027,.068),1,
+                  {'Head':1-t, f'Ear_{side}':t},12,8)
+    fuse_surface = False
+    # Pink follows the volumetric ear surface, not a separate sticker mesh.
+    fuse_surface = True
     # Small cheek tufts remain part of the head skinned mesh.
     add_mesh([(side*.26,-.48,.82),(side*.397,-.38,.77),(side*.30,-.35,.71),(side*.24,-.52,.73)],[(0,1,2),(0,2,3),(3,2,1),(0,3,1)],0,{'Head':1})
 
-add_mesh([(-.04,-.838,.829),(.04,-.838,.829),(0,-.856,.788),(0,-.817,.829)],[(0,2,1),(0,3,2),(1,2,3),(0,1,3)],4,{'Head':1})
+fuse_surface = False
+ellipsoid((0,-.826,.813),(.035,.023,.022),4,{'Head':1},12,8)
 # Discreet mouth, freshly constructed geometry.
-ellipsoid((0,-.834,.766),(.012,.008,.028),13,{'Jaw':1},8,6)
+ellipsoid((0,-.832,.768),(.008,.005,.016),13,{'Jaw':1},8,6)
+fuse_surface = True
 
 bone_specs=[('Root',None,(0,0,0),(0,0,.2)),('Pelvis','Root',(0,.24,.55),(0,0,.59)),
             ('Chest','Pelvis',(0,0,.59),(0,-.29,.67)),('Neck','Chest',(0,-.29,.67),(0,-.4,.84)),
@@ -161,7 +178,7 @@ cat=bpy.data.objects.new('Companion_CreamBicolor',mesh); bpy.context.collection.
 cat.data.materials.append(mat)
 uv_layer=mesh.uv_layers.new(name='Companion_PaletteUV')
 for poly,uv in zip(mesh.polygons,uv_faces):
-    poly.use_smooth=False
+    poly.use_smooth=True
     for li,coord in zip(poly.loop_indices,uv): uv_layer.data[li].uv=coord
 # Recalculate hand-authored ear/patch winding consistently where applicable.
 bpy.context.view_layer.objects.active=cat; cat.select_set(True)
@@ -182,6 +199,83 @@ for i,binding in enumerate(weights):
     total=sum(binding.values())
     for name,w in binding.items():
         if w>0: groups[name].add([i],w/total,'REPLACE')
+
+# Fuse the original overlapping anatomical volumes, not the eyes/markings.
+# Transfer palette and existing skin weights before removing the source copy.
+# Voxel spacing is bounded: enough silhouette detail without subdivision bloat.
+source_cat=cat
+source_cat.modifiers.clear()
+def subset(name, keep_core):
+    obj=source_cat.copy(); obj.data=source_cat.data.copy()
+    obj.name=name; bpy.context.collection.objects.link(obj)
+    bm=bmesh.new(); bm.from_mesh(obj.data); bm.verts.ensure_lookup_table()
+    bmesh.ops.delete(bm,geom=[v for v in bm.verts if fused_vertices[v.index] != keep_core],context='VERTS')
+    bm.to_mesh(obj.data); bm.free()
+    return obj
+core=subset('Companion_FusedSurface',True)
+details=subset('Companion_FacialDetails',False)
+bpy.ops.object.select_all(action='DESELECT')
+core.select_set(True); bpy.context.view_layer.objects.active=core
+remesh=core.modifiers.new('Continuous anatomical surface','REMESH')
+remesh.mode='VOXEL'; remesh.voxel_size=.018; remesh.use_smooth_shade=True
+bpy.ops.object.modifier_apply(modifier=remesh.name)
+smooth=core.modifiers.new('Relax anatomical joins','SMOOTH'); smooth.factor=.65; smooth.iterations=3
+bpy.ops.object.modifier_apply(modifier=smooth.name)
+transfer=core.modifiers.new('Preserve palette and skin','DATA_TRANSFER')
+transfer.object=source_cat
+transfer.use_loop_data=True; transfer.data_types_loops={'UV'}; transfer.loop_mapping='POLYINTERP_NEAREST'
+transfer.use_vert_data=True; transfer.data_types_verts={'VGROUP_WEIGHTS'}; transfer.vert_mapping='POLYINTERP_NEAREST'
+bpy.ops.object.datalayout_transfer(modifier=transfer.name)
+bpy.ops.object.modifier_apply(modifier=transfer.name)
+# Continuous color interpolation avoids palette-island seams on the fused skin.
+# These are the same existing swatches, not a new character design.
+skin_mat=bpy.data.materials.new('Companion_ContinuousPalette'); skin_mat.use_nodes=True
+skin_bsdf=skin_mat.node_tree.nodes.get('Principled BSDF')
+skin_bsdf.inputs['Roughness'].default_value=.83
+attribute=skin_mat.node_tree.nodes.new('ShaderNodeVertexColor'); attribute.layer_name='FurPalette'
+skin_mat.node_tree.links.new(attribute.outputs['Color'],skin_bsdf.inputs['Base Color'])
+core.data.materials.clear(); core.data.materials.append(skin_mat)
+color_layer=core.data.color_attributes.new(name='FurPalette',type='FLOAT_COLOR',domain='POINT')
+def rgb(index):
+    srgb=[int(colors[index][i:i+2],16)/255 for i in (0,2,4)]
+    return Vector(tuple(c/12.92 if c<=.04045 else ((c+.055)/1.055)**2.4 for c in srgb))
+def blend(a,b,t): return a.lerp(b,max(0,min(1,t)))
+for v in core.data.vertices:
+    x,y,z=v.co; color=rgb(0)
+    if y>.47: color=rgb(1) # tail
+    elif z>.66 and y>-.20:
+        color=blend(color,rgb(9),(z-.66)/.10)
+    if y<-.27 and z>.74:
+        color=rgb(1)
+        width=.022+max(0,min(1,(1.154-z)/.328))**1.35*.17
+        white=max((width-abs(x))/.016 if y<-.55 else 0,
+                  (.85-z)/.035 if y<-.63 else 0)
+        color=blend(color,rgb(3),white)
+        blush=math.exp(-((abs(x)-.25)/.038)**2-((z-.837)/.025)**2)*max(0,min(1,(-y-.63)/.045))
+        color=blend(color,rgb(10),blush*.65)
+    if z>1.12:
+        t=max(0,min(1,(z-1.075)/.275)); center=.216+.066*t
+        pink=max(0,1-((abs(x)-center)/.049)**2-((z-1.24)/.09)**2)
+        color=blend(color,rgb(4),pink*max(0,min(1,(-y-.395)/.03)))
+    if z<.15: color=rgb(3)
+    color_layer.data[v.index].color=(*color,1)
+# glTF exports COLOR_0 for both joined primitives. Neutral white must multiply
+# the atlas on eyes/nose, rather than Blender's missing-attribute black default.
+detail_colors=details.data.color_attributes.new(name='FurPalette',type='FLOAT_COLOR',domain='POINT')
+for entry in detail_colors.data: entry.color=(1,1,1,1)
+details.select_set(True)
+bpy.ops.object.join()
+bpy.data.objects.remove(source_cat,do_unlink=True)
+cat=core; cat.name='Companion_CreamBicolor'
+for poly in cat.data.polygons: poly.use_smooth=True
+for v in cat.data.vertices:
+    total=sum(g.weight for g in v.groups)
+    assert total > 0, 'Unweighted fused vertex'
+    for g in list(v.groups): cat.vertex_groups[g.group].add([v.index],g.weight/total,'REPLACE')
+mod=cat.modifiers.new('Companion_Skin','ARMATURE'); mod.object=rig
+cat.parent=rig
+rig.select_set(True)
+print('REFINED_TOPOLOGY',len(cat.data.vertices),'vertices',len(cat.data.polygons),'polygons')
 
 # Five original semantic actions, all generated analytically from rest pose.
 scene=bpy.context.scene; scene.render.fps=24

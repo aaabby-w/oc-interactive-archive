@@ -9,6 +9,9 @@ rig=bpy.data.objects['Companion_Rig']
 assert len(rig.data.bones)==25
 assert cat.data.uv_layers.active is not None
 assert not cat.data.validate(verbose=True)
+assert len(cat.data.vertices)<35000, 'Refinement exceeds the web vertex budget'
+assert all(p.use_smooth for p in cat.data.polygons), 'Faceted normals remain'
+assert cat.data.color_attributes.get('FurPalette') is not None
 for vertex in cat.data.vertices:
     assert abs(sum(group.weight for group in vertex.groups)-1)<1e-5
 assert {a.name for a in bpy.data.actions}=={'Idle','Walk','Rest','Greet','Jump'}
