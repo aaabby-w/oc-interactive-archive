@@ -7,7 +7,7 @@ type RouteShellProps = { section: RouteCopyKey; children?: React.ReactNode };
 export function RouteShell({ section, children }: RouteShellProps) {
   const copy = siteCopy.routes[section];
   return (
-    <main className={`index-page index-page--${section}`}>
+    <main className={`index-page index-page--${section}`} id="main-content" tabIndex={-1}>
       <SiteHeader />
       <div className="route-atmosphere" data-route-effect={section} aria-hidden="true">
         <span />

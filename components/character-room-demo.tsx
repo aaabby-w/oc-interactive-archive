@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Focus, RotateCcw, RotateCw, ZoomIn, ZoomOut } from "lucide-react";
 import type { CharacterResidence, ResidenceActivity } from "@/content/characters/types";
 import { siteCopy } from "@/content/site";
 import { chooseResidenceReply, getResidenceActivityAt } from "@/lib/residence-state";
@@ -10,7 +11,10 @@ import {
   restoreResidenceWeather,
   type ResidenceWeather,
 } from "@/lib/residence-weather";
-import { mountLowPolyResidenceScene } from "@/components/residence/lowpoly-residence-scene";
+import {
+  mountLowPolyResidenceScene,
+  type ResidenceSceneController,
+} from "@/components/residence/lowpoly-residence-scene";
 
 type RainLayer = { source: AudioBufferSourceNode; gain: GainNode };
 type AmbientAudio = {
@@ -87,6 +91,7 @@ export function CharacterRoomDemo({
 }) {
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
   const mount = useRef<HTMLDivElement>(null);
+  const sceneController = useRef<ResidenceSceneController | null>(null);
   const activityRef = useRef<ResidenceActivity>("idle");
   const weatherRef = useRef<ResidenceWeather>("clear");
   const nightRef = useRef(false);
@@ -133,15 +138,26 @@ export function CharacterRoomDemo({
   useEffect(() => {
     const container = mount.current;
     if (!container) return;
-    return mountLowPolyResidenceScene({
-      container,
-      characterName,
-      assetBasePath: basePath,
-      activityRef,
-      weatherRef,
-      nightRef,
-      waveUntil,
-    });
+    container.dataset.sceneReady = "loading";
+    try {
+      const controller = mountLowPolyResidenceScene({
+        container,
+        characterName,
+        assetBasePath: basePath,
+        activityRef,
+        weatherRef,
+        nightRef,
+        waveUntil,
+      });
+      sceneController.current = controller;
+      return () => {
+        controller.dispose();
+        sceneController.current = null;
+      };
+    } catch (error) {
+      container.dataset.sceneReady = "error";
+      console.error("Residence scene could not start", error);
+    }
   }, [basePath, characterName]);
 
   useEffect(() => {
@@ -253,12 +269,23 @@ export function CharacterRoomDemo({
         <span className="board-pin board-pin-b" aria-hidden="true" />
         <span className="board-pin board-pin-c" aria-hidden="true" />
         <div className="residence-window">
-          <div className="residence-canvas" ref={mount} data-cursor-focus />
+          <div className="residence-canvas" ref={mount} data-cursor-focus>
+            <span className="residence-canvas-fallback" aria-live="polite">
+              <b>居所场景载入中</b><small>RESIDENCE SCENE LOADING</small>
+            </span>
+          </div>
           <div className="window-glare" aria-hidden="true" />
           <div className="residence-view-hint" aria-hidden="true">{siteCopy.residence.watchHint}</div>
           <div className="residence-weather-badge" data-weather={weatherSceneKey}>
             <span aria-hidden="true"><i /><i /><i /></span>
             <div><b>{weatherDisplay.zh}</b><small>{weatherDisplay.en}</small></div>
+          </div>
+          <div className="residence-camera-controls" role="group" aria-label="居所视角控制">
+            <button type="button" aria-label="向左旋转视角" title="向左旋转" onClick={() => sceneController.current?.rotate(-1)}><RotateCcw aria-hidden="true" /></button>
+            <button type="button" aria-label="缩小居所视角" title="缩小" onClick={() => sceneController.current?.zoom(-1)}><ZoomOut aria-hidden="true" /></button>
+            <button type="button" aria-label="重置居所视角" title="重置视角" onClick={() => sceneController.current?.reset()}><Focus aria-hidden="true" /></button>
+            <button type="button" aria-label="放大居所视角" title="放大" onClick={() => sceneController.current?.zoom(1)}><ZoomIn aria-hidden="true" /></button>
+            <button type="button" aria-label="向右旋转视角" title="向右旋转" onClick={() => sceneController.current?.rotate(1)}><RotateCw aria-hidden="true" /></button>
           </div>
         </div>
         <button

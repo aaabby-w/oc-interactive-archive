@@ -6,7 +6,7 @@ export default function Home() {
   const featured = getFeaturedCharacter();
 
   return (
-    <main className="home-page">
+    <main className="home-page" id="main-content" tabIndex={-1}>
       <SiteHeader />
       <HomeExperience
         characterNameZh={featured.character.displayName.zh}

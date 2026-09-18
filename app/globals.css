@@ -7,7 +7,7 @@
   --ink: #eef1e9;
   --ink-soft: #e2e8df;
   --bone: #27322f;
-  --mist: #68736e;
+  --mist: #58635e;
   --ember: #6e9988;
   --hairline: rgba(39, 50, 47, 0.18);
   --ember-line: rgba(91, 137, 119, 0.45);
@@ -64,9 +64,21 @@ body {
   color: var(--bone);
 }
 
-html.theme-changing body :not(.theme-toggle, .theme-toggle *),
-html.theme-changing body :not(.theme-toggle, .theme-toggle *)::before,
-html.theme-changing body :not(.theme-toggle, .theme-toggle *)::after {
+html.theme-changing body,
+html.theme-changing .site-header,
+html.theme-changing .home-page,
+html.theme-changing .index-page,
+html.theme-changing .profile-page,
+html.theme-changing .world-page-shell,
+html.theme-changing .world-atlas-page,
+html.theme-changing .world-city-card,
+html.theme-changing .world-city-index button,
+html.theme-changing .residence-section,
+html.theme-changing .residence-board,
+html.theme-changing .character-row,
+html.theme-changing .showcase-media,
+html.theme-changing .archive-gateway-link,
+html.theme-changing .world-atlas-map {
   transition-property: color, background-color, border-color, box-shadow, filter, opacity !important;
   transition-duration: 650ms !important;
   transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1) !important;
@@ -80,7 +92,36 @@ a {
 button,
 a {
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
+
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.skip-link {
+  position: fixed;
+  z-index: 1000;
+  top: 12px;
+  left: 12px;
+  padding: 11px 15px;
+  border: 1px solid var(--ember);
+  background: var(--ink);
+  color: var(--bone);
+  font-size: 14px;
+  transform: translateY(-160%);
+  transition: transform 180ms ease;
+}
+
+.skip-link:focus { transform: none; }
 
 ::selection {
   background: var(--ember);
@@ -129,6 +170,7 @@ a {
   align-items: center;
   gap: 14px;
   width: max-content;
+  min-height: 44px;
 }
 
 .identity-mark {
@@ -207,10 +249,13 @@ a {
 }
 
 .site-nav a:hover::after,
-.site-nav a:focus-visible::after {
+.site-nav a:focus-visible::after,
+.site-nav a[aria-current="page"]::after {
   right: 0;
   left: 0;
 }
+
+.site-nav a[aria-current="page"] { color: var(--ember); }
 
 .site-nav span {
   font-family: var(--font-display);
@@ -241,16 +286,15 @@ a {
 .theme-toggle {
   position: relative;
   width: 58px !important;
-  height: 30px !important;
+  height: 44px !important;
   min-width: 58px;
   padding: 0 !important;
   overflow: visible;
-  border: 1px solid var(--hairline) !important;
+  border: 0 !important;
   border-radius: 999px !important;
-  background: var(--surface) !important;
+  background: transparent !important;
   color: var(--bone) !important;
-  box-shadow: 0 8px 30px rgba(25, 39, 33, 0.08);
-  backdrop-filter: blur(14px);
+  box-shadow: none;
   transform: translateZ(0);
   transition:
     transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
@@ -261,9 +305,10 @@ a {
 }
 
 .theme-toggle:hover {
-  border-color: var(--ember) !important;
-  background: var(--surface) !important;
+  background: transparent !important;
 }
+
+.theme-toggle:hover .theme-toggle-track { border-color: var(--ember); }
 
 .theme-toggle:focus-visible {
   outline: 2px solid var(--ember);
@@ -279,12 +324,16 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 100%;
-  height: 100%;
+  width: 58px;
+  height: 30px;
   padding: 0 7px;
   overflow: hidden;
-  border-radius: inherit;
-  box-shadow: inset 0 2px 5px rgba(31, 52, 43, 0.1);
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: inset 0 2px 5px rgba(31, 52, 43, 0.1), 0 8px 30px rgba(25, 39, 33, 0.08);
+  backdrop-filter: blur(14px);
+  transition: border-color 360ms ease, background-color 520ms ease, box-shadow 520ms ease;
 }
 
 .theme-toggle-track::after {
@@ -835,12 +884,15 @@ html.theme-changing .theme-icon {
   bottom: 34px;
   left: clamp(24px, 5vw, 82px);
   display: inline-flex;
+  min-height: 44px;
   gap: 12px;
   align-items: center;
   color: var(--mist);
   font-size: 12px;
   letter-spacing: 0.12em;
 }
+
+.profile-art-back { min-height: 44px; align-items: center; }
 
 .back-link:hover,
 .back-link:focus-visible {
@@ -1425,9 +1477,72 @@ html.theme-changing .theme-icon {
   touch-action: pan-y;
 }
 
+.residence-canvas canvas:focus-visible {
+  outline: 2px solid #6e9988;
+  outline-offset: -4px;
+}
+
 .residence-canvas canvas:active {
   cursor: grabbing;
 }
+
+.residence-canvas-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 5px;
+  background:
+    linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px),
+    #becbc2;
+  background-size: 32px 32px;
+  color: #34423d;
+  font-family: var(--font-display);
+  pointer-events: none;
+}
+
+.residence-canvas-fallback b { font-size: 17px; font-weight: 400; letter-spacing: 0.12em; }
+.residence-canvas-fallback small { font-family: var(--font-sans); font-size: 9px; letter-spacing: 0.16em; }
+.residence-canvas[data-scene-ready="true"] .residence-canvas-fallback { opacity: 0; transition: opacity 360ms ease; }
+.residence-canvas[data-scene-ready="error"] .residence-canvas-fallback b,
+.residence-canvas[data-scene-ready="error"] .residence-canvas-fallback small { display: none; }
+.residence-canvas[data-scene-ready="error"] .residence-canvas-fallback::before { content: "此设备暂时无法显示 3D 居所"; font-size: 16px; }
+.residence-canvas[data-scene-ready="error"] .residence-canvas-fallback::after { content: "STATIC RESIDENCE FALLBACK"; font-family: var(--font-sans); font-size: 9px; letter-spacing: 0.16em; }
+
+.residence-camera-controls {
+  position: absolute;
+  z-index: 6;
+  bottom: 14px;
+  left: 50%;
+  display: flex;
+  border: 1px solid rgba(55, 77, 68, 0.28);
+  background: rgba(241, 239, 220, 0.82);
+  box-shadow: 4px 4px 0 rgba(66, 83, 76, 0.12);
+  backdrop-filter: blur(8px);
+  transform: translateX(-50%);
+}
+
+.residence-camera-controls button {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-right: 1px solid rgba(55, 77, 68, 0.18);
+  background: transparent;
+  color: #34423d;
+  cursor: pointer;
+  place-items: center;
+  transition: color 160ms ease, background-color 160ms ease;
+}
+
+.residence-camera-controls button:last-child { border-right: 0; }
+.residence-camera-controls button:hover,
+.residence-camera-controls button:focus-visible { background: #6e9988; color: #fffaf0; outline: none; }
+.residence-camera-controls button:active { background: #557d6e; }
+.residence-camera-controls svg { width: 17px; height: 17px; stroke-width: 1.6; }
 
 .window-glare {
   position: absolute;
@@ -2784,11 +2899,17 @@ html.theme-changing .theme-icon {
 }
 
 [data-text-reveal] {
+  opacity: 1;
+  filter: none;
+  clip-path: inset(0 0 0 0);
+  transform: none;
+}
+
+[data-text-reveal][data-reveal-pending="true"] {
   opacity: 0;
-  filter: blur(7px);
   clip-path: inset(0 0 24% 0);
   transform: translateY(24px);
-  transition: opacity 900ms ease, filter 900ms ease, clip-path 1s cubic-bezier(0.22, 1, 0.36, 1), transform 1s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity 620ms ease, clip-path 760ms cubic-bezier(0.22, 1, 0.36, 1), transform 760ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 [data-text-reveal][data-visible="true"] {
@@ -2960,9 +3081,9 @@ html.theme-changing .theme-icon {
     border-top: 1px solid color-mix(in srgb, var(--hairline) 62%, transparent);
   }
 
-  .site-nav a { min-width: 0; padding: 8px 2px; }
+  .site-nav a { min-width: 0; min-height: 48px; padding: 8px 2px; }
   .site-nav span { font-size: 14px; }
-  .site-nav small { font-size: 6.5px; letter-spacing: 0.1em; }
+  .site-nav small { font-size: 8px; letter-spacing: 0.08em; }
 
   .route-atmosphere { inset-block-start: 118px; }
   .index-heading {
@@ -2991,7 +3112,7 @@ html.theme-changing .theme-icon {
   .character-name h2 { font-size: 23px; }
   .character-name p { font-size: 8px; }
   .character-summary { grid-column: 1 / -1; grid-row: 2; margin-top: 4px; font-size: 14px; line-height: 1.65; }
-  .character-row > a { display: grid; width: 36px; height: 36px; padding: 0; place-items: center; border: 1px solid var(--ember-line); font-size: 0; }
+  .character-row > a { display: grid; width: 44px; height: 44px; padding: 0; place-items: center; border: 1px solid var(--ember-line); font-size: 0; }
 
   .art-hero { min-height: 680px; }
   .hero-tunnel span { width: 130vw; aspect-ratio: 1; }
@@ -3088,7 +3209,8 @@ html.theme-changing .theme-icon {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  [data-text-reveal] { opacity: 1; filter: none; clip-path: none; transform: none; }
+  [data-text-reveal],
+  [data-text-reveal][data-reveal-pending="true"] { opacity: 1; filter: none; clip-path: none; transform: none; }
   .route-atmosphere,
   .hero-tunnel { animation: none; }
 }
@@ -3178,30 +3300,23 @@ html.theme-changing .theme-icon {
 
 .hero-tunnel { opacity: 0.18; }
 
-/* World exploration plate */
+/* World city observatory */
 .world-page-shell {
   min-height: 100svh;
-  overflow: hidden;
+  overflow: clip;
   background: var(--ink);
   color: var(--bone);
 }
 
-.world-page-shell > .site-header {
-  position: relative;
-  z-index: 20;
-}
-
-.world-atlas-page {
-  position: relative;
-  min-height: calc(100svh - 112px);
-}
+.world-page-shell > .site-header { position: relative; z-index: 20; }
+.world-atlas-page { position: relative; min-height: calc(100svh - 108px); }
 
 .world-atlas {
   position: relative;
   display: grid;
-  grid-template-rows: auto minmax(440px, 1fr) auto;
-  min-height: calc(100svh - 112px);
-  padding: clamp(36px, 5.5vh, 74px) clamp(26px, 6vw, 96px) 24px;
+  grid-template-rows: auto minmax(430px, 1fr) auto;
+  min-height: calc(100svh - 108px);
+  padding: clamp(32px, 5vh, 64px) clamp(24px, 5.6vw, 92px) 24px;
   overflow: hidden;
   isolation: isolate;
 }
@@ -3212,7 +3327,7 @@ html.theme-changing .theme-icon {
   inset: 0;
   content: "";
   background:
-    radial-gradient(circle at 72% 38%, color-mix(in srgb, var(--ember) 10%, transparent), transparent 28rem),
+    radial-gradient(circle at 70% 36%, color-mix(in srgb, var(--ember) 12%, transparent), transparent 28rem),
     linear-gradient(180deg, color-mix(in srgb, var(--surface) 34%, transparent), transparent 42%);
 }
 
@@ -3220,24 +3335,24 @@ html.theme-changing .theme-icon {
   position: relative;
   z-index: 4;
   display: grid;
-  grid-template-columns: minmax(210px, 0.55fr) minmax(320px, 0.75fr) minmax(280px, 0.7fr);
+  grid-template-columns: minmax(190px, 0.5fr) minmax(320px, 0.8fr) minmax(280px, 0.7fr);
   align-items: end;
-  gap: 20px clamp(28px, 5vw, 90px);
+  gap: 20px clamp(28px, 5vw, 86px);
 }
 
 .world-atlas-copy p,
 .world-atlas-copy span {
   margin: 0;
   color: var(--mist);
-  font-size: 10px;
-  letter-spacing: 0.2em;
+  font-size: 11px;
+  letter-spacing: 0.18em;
   line-height: 1.8;
 }
 
 .world-atlas-copy h1 {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(48px, 5.6vw, 90px);
+  font-size: clamp(48px, 5.4vw, 86px);
   font-weight: 400;
   letter-spacing: 0.1em;
   line-height: 0.95;
@@ -3247,7 +3362,7 @@ html.theme-changing .theme-icon {
 .world-atlas-copy span {
   max-width: 430px;
   font-family: var(--font-display);
-  font-size: 14px;
+  font-size: 15px;
   letter-spacing: 0.02em;
 }
 
@@ -3255,14 +3370,27 @@ html.theme-changing .theme-icon {
   position: relative;
   z-index: 2;
   align-self: stretch;
-  min-height: 440px;
-  margin-top: clamp(14px, 2vh, 28px);
+  min-height: 430px;
+  margin-top: clamp(14px, 2vh, 26px);
+}
+
+.world-atlas-viewport {
+  position: absolute;
+  inset: 0 clamp(290px, 31vw, 370px) 0 0;
+  overflow: hidden;
+  contain: layout paint;
 }
 
 .world-atlas-geo {
+  --atlas-focus-x: 50%;
+  --atlas-focus-y: 50%;
+  --atlas-turn: 0deg;
   position: absolute;
-  inset: -3% 0 2%;
-  transform: translateZ(0);
+  inset: 1% 0 0;
+  transform: scale(1.34) rotate(var(--atlas-turn));
+  transform-origin: var(--atlas-focus-x) var(--atlas-focus-y);
+  transition: transform 880ms cubic-bezier(0.16, 1, 0.3, 1), transform-origin 640ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
 }
 
 .world-atlas-map {
@@ -3273,8 +3401,8 @@ html.theme-changing .theme-icon {
 }
 
 [data-theme="dark"] .world-atlas-map {
-  opacity: 0.78;
-  filter: brightness(0.82) saturate(0.7) drop-shadow(0 18px 22px rgba(0, 0, 0, 0.2));
+  opacity: 0.8;
+  filter: brightness(0.84) saturate(0.72) drop-shadow(0 18px 22px rgba(0, 0, 0, 0.2));
 }
 
 .world-atlas-route-overlay {
@@ -3287,52 +3415,49 @@ html.theme-changing .theme-icon {
   stroke: var(--ember);
   stroke-width: 0.13;
   stroke-dasharray: 0.35 1.1;
-  opacity: 0.52;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.4;
   animation: atlas-route 18s linear infinite;
 }
 
-@keyframes atlas-route {
-  to { stroke-dashoffset: -170; }
-}
+@keyframes atlas-route { to { stroke-dashoffset: -170; } }
 
-.world-atlas-points {
-  position: absolute;
-  inset: 0;
-}
+.world-atlas-points { position: absolute; inset: 0; }
 
 .world-atlas-points button {
   position: absolute;
   z-index: 4;
   display: grid;
-  width: 58px;
-  height: 58px;
+  width: 48px;
+  height: 48px;
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--bone);
   cursor: pointer;
   place-items: center;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%) scale(calc(1 / 1.34));
+  transition: transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .world-atlas-points button::before,
 .world-atlas-points button::after {
   position: absolute;
-  border: 1px solid color-mix(in srgb, var(--bone) 54%, transparent);
+  border: 1px solid color-mix(in srgb, var(--bone) 58%, transparent);
   border-radius: 50%;
   content: "";
   opacity: 0;
   transform: scale(0.45);
-  transition: opacity 260ms ease, transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity 220ms ease, transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.world-atlas-points button::before { inset: 11px; }
-.world-atlas-points button::after { inset: 3px; border-color: var(--ember-line); }
+.world-atlas-points button::before { inset: 8px; }
+.world-atlas-points button::after { inset: 1px; border-color: var(--ember-line); }
 
 .world-atlas-points button > span {
   width: 8px;
   height: 8px;
-  border: 1px solid color-mix(in srgb, var(--bone) 60%, transparent);
+  border: 1px solid color-mix(in srgb, var(--bone) 68%, transparent);
   border-radius: 50%;
   background: var(--ink);
   box-shadow: 0 2px 9px rgba(27, 38, 34, 0.3);
@@ -3341,14 +3466,14 @@ html.theme-changing .theme-icon {
 
 .world-atlas-points button small {
   position: absolute;
-  top: 43px;
+  top: 39px;
   width: max-content;
-  color: var(--mist);
-  font-size: 7px;
-  letter-spacing: 0.17em;
+  color: var(--bone);
+  font-size: 8px;
+  letter-spacing: 0.15em;
   opacity: 0;
   transform: translateY(-4px);
-  transition: opacity 220ms ease, transform 320ms ease;
+  transition: opacity 180ms ease, transform 280ms ease;
 }
 
 .world-atlas-points button:hover::before,
@@ -3356,10 +3481,7 @@ html.theme-changing .theme-icon {
 .world-atlas-points button:focus-visible::before,
 .world-atlas-points button:focus-visible::after,
 .world-atlas-points button.is-active::before,
-.world-atlas-points button.is-active::after {
-  opacity: 1;
-  transform: scale(1);
-}
+.world-atlas-points button.is-active::after { opacity: 1; transform: scale(1); }
 
 .world-atlas-points button:hover > span,
 .world-atlas-points button:focus-visible > span,
@@ -3371,74 +3493,77 @@ html.theme-changing .theme-icon {
 
 .world-atlas-points button:hover small,
 .world-atlas-points button:focus-visible small,
-.world-atlas-points button.is-active small {
-  opacity: 1;
-  transform: none;
-}
+.world-atlas-points button.is-active small { opacity: 1; transform: none; }
 
-.world-atlas-active {
+.world-atlas-points button:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; border-radius: 50%; }
+
+.world-city-card {
   position: absolute;
-  z-index: 3;
-  bottom: 0;
-  left: 0;
-  display: grid;
-  max-width: 78%;
-  pointer-events: none;
+  z-index: 8;
+  right: 0;
+  bottom: 18px;
+  width: min(330px, 35vw);
+  padding: 20px 22px 17px;
+  border: 1px solid color-mix(in srgb, var(--bone) 20%, transparent);
+  background: color-mix(in srgb, var(--ink) 90%, transparent);
+  box-shadow: 0 22px 58px color-mix(in srgb, var(--bone) 11%, transparent);
+  backdrop-filter: blur(15px);
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
 }
 
-.world-atlas-active span,
-.world-atlas-active small {
-  color: var(--mist);
-  font-size: 9px;
-  letter-spacing: 0.22em;
-}
-
-.world-atlas-active strong {
-  overflow: hidden;
-  margin-top: 5px;
-  font-family: "Arial Black", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", var(--font-sans);
-  font-size: clamp(50px, 7vw, 112px);
-  font-weight: 800;
-  letter-spacing: -0.085em;
-  line-height: 0.9;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.world-atlas-active small { margin-top: 12px; }
+.world-city-card header { display: grid; gap: 4px; padding-bottom: 15px; border-bottom: 1px solid var(--hairline); }
+.world-city-card header span,
+.world-city-card header small,
+.world-city-card dt,
+.world-city-card > a { color: var(--mist); font-size: 9px; letter-spacing: 0.16em; }
+.world-city-card header strong { font-family: var(--font-display); font-size: clamp(30px, 3vw, 46px); font-weight: 400; line-height: 1.1; }
+.world-city-card dl { display: grid; grid-template-columns: 1fr 1fr; margin: 0; }
+.world-city-card dl > div { min-width: 0; padding: 12px 8px 10px 0; border-bottom: 1px solid var(--hairline); }
+.world-city-card dl > div:nth-child(even) { padding-left: 13px; border-left: 1px solid var(--hairline); }
+.world-city-card dt { margin-bottom: 6px; }
+.world-city-card dd { display: grid; gap: 2px; margin: 0; font-family: var(--font-display); font-size: 14px; line-height: 1.35; }
+.world-city-card dd small { color: var(--mist); font-family: var(--font-sans); font-size: 8px; letter-spacing: 0.11em; }
+.world-city-card .world-city-time { font-family: var(--font-display-latin); font-size: 20px; font-variant-numeric: tabular-nums; }
+.world-city-card .world-city-coordinates { grid-column: 1 / -1; }
+.world-city-card .world-city-coordinates dd { font-family: var(--font-sans); font-size: 11px; letter-spacing: 0.08em; }
+.world-city-card > a { display: inline-flex; align-items: center; min-height: 44px; margin-bottom: -10px; color: var(--bone); }
 
 .world-atlas-hint {
   position: absolute;
-  right: 0;
-  bottom: 12px;
+  z-index: 7;
+  right: 360px;
+  bottom: 24px;
   margin: 0;
   color: var(--mist);
-  font-size: 8px;
-  letter-spacing: 0.2em;
+  font-size: 9px;
+  letter-spacing: 0.18em;
   writing-mode: vertical-rl;
 }
 
+.world-city-index { display: none; }
+
 .world-atlas-footer {
   position: relative;
-  z-index: 5;
+  z-index: 9;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 30px;
-  padding-top: 18px;
+  padding-top: 14px;
   border-top: 1px solid var(--hairline);
   color: var(--mist);
-  font-size: 8px;
-  letter-spacing: 0.18em;
+  font-size: 9px;
+  letter-spacing: 0.17em;
 }
 
 .world-atlas-footer a {
   display: inline-flex;
   align-items: center;
+  min-height: 44px;
   gap: 12px;
   color: var(--bone);
   font-family: var(--font-display);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .world-atlas-footer i { color: var(--ember); font-style: normal; }
@@ -3449,15 +3574,7 @@ html.theme-changing .theme-icon {
       radial-gradient(ellipse at 50% 46%, rgba(20, 30, 27, 0.08), rgba(20, 30, 27, 0.42) 76%),
       linear-gradient(180deg, rgba(20, 30, 27, 0.2), transparent 28% 62%, rgba(20, 30, 27, 0.48));
   }
-
-  .hero-title {
-    top: 49%;
-    right: 16px;
-    left: 16px;
-    max-width: none;
-    transform: translateY(-44%);
-  }
-
+  .hero-title { top: 49%; right: 16px; left: 16px; max-width: none; transform: translateY(-44%); }
   .hero-kicker { margin-bottom: 21px; font-size: 8px; }
   .hero-title h1 span { font-size: clamp(44px, 13.8vw, 66px); letter-spacing: 0.13em; text-indent: 0.13em; }
   .hero-title h1 strong { font-size: clamp(18px, 5.6vw, 27px); letter-spacing: 0.2em; text-indent: 0.2em; }
@@ -3465,22 +3582,70 @@ html.theme-changing .theme-icon {
   .hero-caption { bottom: 84px; }
 
   .world-atlas-page { min-height: calc(100svh - 112px); }
-  .world-atlas {
-    grid-template-rows: auto minmax(470px, 1fr) auto;
-    min-height: calc(100svh - 112px);
-    padding: 32px 18px 18px;
-  }
+  .world-atlas { display: block; min-height: calc(100svh - 112px); padding: 30px 16px 18px; overflow: visible; }
   .world-atlas-copy { display: block; }
-  .world-atlas-copy h1 { margin: 12px 0 18px; font-size: clamp(46px, 14vw, 66px); }
-  .world-atlas-copy span { display: block; max-width: 92%; font-size: 13px; line-height: 1.7; }
-  .world-atlas-stage { min-height: 470px; margin-top: 8px; }
-  .world-atlas-geo { inset: 10% -68% 18% -42%; }
-  .world-atlas-active { bottom: 14px; max-width: 94%; }
-  .world-atlas-active strong { font-size: clamp(40px, 13vw, 58px); letter-spacing: -0.07em; }
-  .world-atlas-hint { right: 1px; bottom: 78px; }
-  .world-atlas-footer span { max-width: 60%; line-height: 1.6; }
+  .world-atlas-copy h1 { margin: 12px 0 17px; font-size: clamp(44px, 13.5vw, 62px); }
+  .world-atlas-copy span { display: block; max-width: 96%; font-size: 14px; line-height: 1.75; }
+  .world-atlas-stage { display: grid; gap: 14px; min-height: 0; margin-top: 28px; }
+  .world-atlas-viewport { position: relative; inset: auto; width: 100%; aspect-ratio: 1.65; border-block: 1px solid var(--hairline); }
+  .world-atlas-geo { inset: 5% 0; transform: scale(1.04) rotate(var(--atlas-turn)); }
+  .world-atlas-points button { width: 44px; height: 44px; transform: translate(-50%, -50%) scale(calc(1 / 1.04)); }
+  .world-atlas-points button::before { inset: 7px; }
+  .world-atlas-points button small { top: 35px; font-size: 7px; }
+  .world-city-card { position: relative; right: auto; bottom: auto; width: 100%; min-height: 245px; padding: 18px 18px 13px; }
+  .world-city-card header strong { font-size: 38px; }
+  .world-city-card > a { font-size: 9px; }
+  .world-atlas-hint { position: static; order: -1; margin: 0; font-size: 8px; writing-mode: initial; }
+  .world-city-index { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin-top: 14px; background: var(--hairline); border: 1px solid var(--hairline); }
+  .world-city-index button { display: grid; min-height: 48px; padding: 7px 8px; border: 0; background: var(--ink); color: var(--mist); text-align: left; cursor: pointer; }
+  .world-city-index button span { color: var(--bone); font-size: 10px; letter-spacing: 0.13em; }
+  .world-city-index button small { font-family: var(--font-display); font-size: 11px; }
+  .world-city-index button.is-active { background: color-mix(in srgb, var(--ember) 22%, var(--ink)); }
+  .world-city-index button:focus-visible { position: relative; z-index: 1; outline: 2px solid var(--ember); outline-offset: -2px; }
+  .world-atlas-footer { margin-top: 18px; line-height: 1.55; }
+  .world-atlas-footer span { max-width: 66%; }
+}
+
+@media (max-width: 760px) and (orientation: landscape) {
+  .world-atlas { padding-top: 20px; }
+  .world-atlas-copy h1 { font-size: 46px; }
+  .world-atlas-copy span { max-width: 70ch; }
+  .world-atlas-stage { grid-template-columns: minmax(0, 1.25fr) minmax(250px, 0.75fr); align-items: stretch; }
+  .world-atlas-hint { grid-column: 1 / -1; }
+  .world-city-card { min-height: 0; }
+  .world-city-index { grid-template-columns: repeat(6, 1fr); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .world-atlas-route-overlay { animation: none; }
+  .world-atlas-geo { transition: none; transform: none; }
+  .world-atlas-points button { transform: translate(-50%, -50%); }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .site-header {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    min-height: 58px;
+    padding: 5px 14px;
+  }
+  .site-identity { gap: 8px; }
+  .identity-mark { width: 28px; height: 28px; flex-basis: 28px; }
+  .identity-mark::before { width: 34px; height: 10px; }
+  .identity-mark::after { width: 10px; height: 34px; }
+  .identity-type > span { font-size: 13px; }
+  .identity-type small { display: none; }
+  .site-nav {
+    grid-column: 2;
+    grid-row: 1;
+    grid-template-columns: repeat(5, minmax(52px, 1fr));
+    width: min(100%, 480px);
+    margin-inline: auto;
+    padding: 0;
+    border-top: 0;
+  }
+  .site-nav a { min-height: 44px; padding: 6px 2px; }
+  .site-nav span { font-size: 13px; }
+  .site-nav small { font-size: 7px; }
+  .header-actions { grid-column: 3; grid-row: 1; }
+  .profile-art-back { top: 70px; }
 }

@@ -17,6 +17,12 @@ type SceneOptions = {
   nightRef: MutableValue<boolean>;
   waveUntil: MutableValue<number>;
 };
+export type ResidenceSceneController = {
+  dispose: () => void;
+  rotate: (direction: -1 | 1) => void;
+  zoom: (direction: -1 | 1) => void;
+  reset: () => void;
+};
 type AssetSpec = {
   name: string;
   position: [number, number, number];
@@ -48,6 +54,7 @@ export function mountLowPolyResidenceScene({
   container, characterName, assetBasePath, activityRef, weatherRef, nightRef, waveUntil,
 }: SceneOptions) {
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const compactQuality = window.matchMedia("(max-width: 760px), (pointer: coarse)").matches;
   const scene = new THREE.Scene();
   const camera = new THREE.OrthographicCamera(-6, 6, 4.5, -4.5, 0.1, 80);
   camera.position.set(11.5, 10.5, 14.5);
@@ -59,6 +66,7 @@ export function mountLowPolyResidenceScene({
   renderer.toneMappingExposure = 1.2;
   renderer.domElement.setAttribute("role", "img");
   renderer.domElement.setAttribute("aria-label", `${characterName}的插画式居所、双色猫与实体窗外环境，可拖动查看。`);
+  renderer.domElement.tabIndex = 0;
   container.appendChild(renderer.domElement);
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
@@ -73,13 +81,50 @@ export function mountLowPolyResidenceScene({
   controls.minPolarAngle = 0.28;
   controls.maxPolarAngle = 1.38;
   controls.target.set(0, 1.2, 0);
+  controls.saveState();
+
+  const rotate = (direction: -1 | 1) => {
+    const offset = camera.position.clone().sub(controls.target);
+    offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), direction * 0.18);
+    camera.position.copy(controls.target).add(offset);
+    camera.lookAt(controls.target);
+    controls.update();
+    renderer.render(scene, camera);
+  };
+  const zoom = (direction: -1 | 1) => {
+    const factor = direction > 0 ? 1.14 : 1 / 1.14;
+    camera.zoom = THREE.MathUtils.clamp(camera.zoom * factor, controls.minZoom, controls.maxZoom);
+    camera.updateProjectionMatrix();
+    controls.update();
+    renderer.render(scene, camera);
+  };
+  const reset = () => {
+    controls.reset();
+    renderer.render(scene, camera);
+  };
+  const onCanvasKeyDown = (event: KeyboardEvent) => {
+    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      event.preventDefault();
+      rotate(event.key === "ArrowLeft" ? -1 : 1);
+    } else if (event.key === "+" || event.key === "=") {
+      event.preventDefault();
+      zoom(1);
+    } else if (event.key === "-" || event.key === "_") {
+      event.preventDefault();
+      zoom(-1);
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      reset();
+    }
+  };
+  renderer.domElement.addEventListener("keydown", onCanvasKeyDown);
 
   const hemisphere = new THREE.HemisphereLight(0xfff4e0, 0x566c74, 2.1);
   scene.add(hemisphere);
   const keyLight = new THREE.DirectionalLight(0xffebd3, 3.1);
   keyLight.position.set(-7, 11, 8);
   keyLight.castShadow = true;
-  keyLight.shadow.mapSize.set(2048, 2048);
+  keyLight.shadow.mapSize.set(compactQuality ? 1024 : 2048, compactQuality ? 1024 : 2048);
   keyLight.shadow.bias = -0.0002;
   keyLight.shadow.normalBias = 0.015;
   keyLight.shadow.radius = 2;
@@ -262,7 +307,9 @@ export function mountLowPolyResidenceScene({
     const width = container.clientWidth;
     const height = container.clientHeight;
     if (!width || !height) return;
-    renderer.setPixelRatio(Math.min(5, Math.max(window.devicePixelRatio || 1, 1080 / width)));
+    const targetRatio = Math.max(1, 1080 / width);
+    const ratioCap = compactQuality ? 1.5 : 2;
+    renderer.setPixelRatio(Math.min(ratioCap, Math.max(window.devicePixelRatio || 1, targetRatio)));
     renderer.setSize(width, height, false);
     const aspect = width / height;
     const viewHeight = Math.max(9.8, 14.3 / aspect);
@@ -279,14 +326,27 @@ export function mountLowPolyResidenceScene({
   const start = performance.now();
   let previous = start;
   let visible = true;
-  const intersection = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; });
+  let running = false;
+  const intersection = new IntersectionObserver(([entry]) => {
+    visible = entry.isIntersecting;
+    if (visible) startAnimation();
+    else if (animationFrame) {
+      window.cancelAnimationFrame(animationFrame);
+      animationFrame = 0;
+      running = false;
+    }
+  });
   intersection.observe(container);
   const animate = () => {
-    animationFrame = window.requestAnimationFrame(animate);
+    animationFrame = 0;
+    if (disposed || !visible || document.hidden) {
+      running = false;
+      return;
+    }
+    running = true;
     const now = performance.now();
     const delta = Math.min(0.05, (now - previous) / 1000);
     previous = now;
-    if (!visible || document.hidden) return;
     const elapsed = (now - start) / 1000;
     const activity = activityRef.current;
     const night = nightRef.current;
@@ -307,14 +367,30 @@ export function mountLowPolyResidenceScene({
     environment.update(weather, night, reduceMotion ? 0 : elapsed, reduceMotion);
     controls.update();
     renderer.render(scene, camera);
+    animationFrame = window.requestAnimationFrame(animate);
   };
-  animate();
-  return () => {
+  function startAnimation() {
+    if (disposed || running || !visible || document.hidden) return;
+    running = true;
+    animationFrame = window.requestAnimationFrame(animate);
+  }
+  const onVisibilityChange = () => {
+    if (document.hidden && animationFrame) {
+      window.cancelAnimationFrame(animationFrame);
+      animationFrame = 0;
+      running = false;
+    } else startAnimation();
+  };
+  document.addEventListener("visibilitychange", onVisibilityChange);
+  startAnimation();
+  const dispose = () => {
     disposed = true;
     delete container.dataset.sceneReady;
     window.cancelAnimationFrame(animationFrame);
     observer.disconnect();
     intersection.disconnect();
+    document.removeEventListener("visibilitychange", onVisibilityChange);
+    renderer.domElement.removeEventListener("keydown", onCanvasKeyDown);
     controls.dispose();
     cat?.dispose();
     environment.dispose();
@@ -322,4 +398,5 @@ export function mountLowPolyResidenceScene({
     renderer.dispose();
     renderer.domElement.remove();
   };
+  return { dispose, rotate, zoom, reset } satisfies ResidenceSceneController;
 }

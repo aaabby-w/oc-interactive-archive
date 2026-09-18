@@ -32,7 +32,7 @@ export default async function CharacterPage({ params }: CharacterPageProps) {
     : `${basePath}/images/hero-conservatory-placeholder.png`;
 
   return (
-    <main className="profile-page">
+    <main className="profile-page" id="main-content" tabIndex={-1}>
       <SiteHeader />
       <section className="profile-art" aria-labelledby="profile-title">
         <div className="profile-art-media">

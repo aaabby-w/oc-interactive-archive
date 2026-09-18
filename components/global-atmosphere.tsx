@@ -47,8 +47,14 @@ export function GlobalAtmosphere() {
     );
 
     document.querySelectorAll<HTMLElement>("[data-text-reveal]").forEach((element) => {
-      if (reduceMotion) element.dataset.visible = "true";
-      else revealObserver.observe(element);
+      const isBelowFold = element.getBoundingClientRect().top > window.innerHeight * 0.88;
+      if (reduceMotion || !isBelowFold) {
+        element.dataset.visible = "true";
+        delete element.dataset.revealPending;
+      } else {
+        element.dataset.revealPending = "true";
+        revealObserver.observe(element);
+      }
     });
     cleanup.push(() => revealObserver.disconnect());
 
@@ -56,6 +62,7 @@ export function GlobalAtmosphere() {
       if (reduceMotion || element.dataset.scrambling === "true") return;
       const original = element.dataset.originalText ?? element.textContent ?? "";
       element.dataset.originalText = original;
+      element.setAttribute("aria-label", original);
       element.dataset.scrambling = "true";
       let frameIndex = 0;
       const total = Math.max(12, original.length * 2);

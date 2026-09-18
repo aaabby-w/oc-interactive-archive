@@ -26,6 +26,7 @@ export default function RootLayout({
     <html lang="zh-CN" suppressHydrationWarning>
       <body className="antialiased">
         <ThemeProvider>
+          <a className="skip-link" href="#main-content">跳到主要内容</a>
           <GlobalAtmosphere />
           {children}
         </ThemeProvider>
