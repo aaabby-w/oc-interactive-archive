@@ -3256,29 +3256,35 @@ html.theme-changing .theme-icon {
   margin-top: clamp(14px, 2vh, 28px);
 }
 
-.world-atlas-drift {
+.world-atlas-geo {
   position: absolute;
-  inset: -4% 0 0;
-  color: color-mix(in srgb, var(--mist) 74%, var(--surface));
+  inset: -3% 0 2%;
   transform: translateZ(0);
 }
 
-.world-atlas-drift svg {
+.world-atlas-map {
+  object-fit: fill;
+  opacity: 0.72;
+  filter: drop-shadow(0 18px 20px rgba(27, 38, 34, 0.09));
+  user-select: none;
+}
+
+[data-theme="dark"] .world-atlas-map {
+  opacity: 0.78;
+  filter: brightness(0.82) saturate(0.7) drop-shadow(0 18px 22px rgba(0, 0, 0, 0.2));
+}
+
+.world-atlas-route-overlay {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   overflow: visible;
-}
-
-.atlas-contours {
-  opacity: 0.18;
-  stroke-width: 1;
-}
-
-.atlas-route {
-  opacity: 0.42;
+  fill: none;
   stroke: var(--ember);
-  stroke-width: 1.2;
-  stroke-dasharray: 4 13;
+  stroke-width: 0.13;
+  stroke-dasharray: 0.35 1.1;
+  opacity: 0.52;
   animation: atlas-route 18s linear infinite;
 }
 
@@ -3387,11 +3393,11 @@ html.theme-changing .theme-icon {
 .world-atlas-active strong {
   overflow: hidden;
   margin-top: 5px;
-  font-family: var(--font-sans);
-  font-size: clamp(50px, 7.4vw, 118px);
-  font-weight: 620;
-  letter-spacing: -0.06em;
-  line-height: 0.88;
+  font-family: "Arial Black", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", var(--font-sans);
+  font-size: clamp(50px, 7vw, 112px);
+  font-weight: 800;
+  letter-spacing: -0.085em;
+  line-height: 0.9;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -3465,14 +3471,13 @@ html.theme-changing .theme-icon {
   .world-atlas-copy h1 { margin: 12px 0 18px; font-size: clamp(46px, 14vw, 66px); }
   .world-atlas-copy span { display: block; max-width: 92%; font-size: 13px; line-height: 1.7; }
   .world-atlas-stage { min-height: 470px; margin-top: 8px; }
-  .world-atlas-drift { inset: 4% -41% 13% -25%; }
-  .world-atlas-points { inset: 6% -36% 12% -20%; }
+  .world-atlas-geo { inset: 10% -68% 18% -42%; }
   .world-atlas-active { bottom: 14px; max-width: 94%; }
-  .world-atlas-active strong { font-size: clamp(38px, 11vw, 54px); letter-spacing: -0.04em; }
+  .world-atlas-active strong { font-size: clamp(40px, 13vw, 58px); letter-spacing: -0.07em; }
   .world-atlas-hint { right: 1px; bottom: 78px; }
   .world-atlas-footer span { max-width: 60%; line-height: 1.6; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .atlas-route { animation: none; }
+  .world-atlas-route-overlay { animation: none; }
 }
