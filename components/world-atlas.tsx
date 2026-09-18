@@ -5,8 +5,12 @@ import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { siteCopy } from "@/content/site";
+import { projectToRobinsonPercent } from "@/lib/robinson-projection";
 
-const cities = siteCopy.worldAtlas.cities;
+const cities = siteCopy.worldAtlas.cities.map((city) => ({
+  ...city,
+  ...projectToRobinsonPercent(city.latitude, city.longitude),
+}));
 
 type WeatherReading = {
   temperature: number;
