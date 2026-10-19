@@ -16,6 +16,14 @@ The homepage now includes:
 
 GSAP and ScrollTrigger are isolated in the homepage client experience and cleaned up on unmount. Native scrolling remains in control.
 
+Site-wide editorial typography uses `ScrollTypography` with explicit `data-typo`
+roles. Display titles rise and stretch by character, section headings gather from
+the center, quotations use a restrained perspective turn, metadata reveals in a
+short character cadence, and reading copy uses a quieter block reveal. Closed
+`details` content is initialized only when opened. All variants keep native
+scrolling, restore their original markup on route changes, and become static
+when reduced motion is requested.
+
 ## Later scroll storytelling
 
 - Native scrolling remains in control.

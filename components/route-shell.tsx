@@ -19,13 +19,13 @@ export function RouteShell({ section, children }: RouteShellProps) {
       <section className="index-heading">
         <span className="index-number">{copy.index}</span>
         <div data-text-reveal>
-          <p className="eyebrow">{copy.eyebrow}</p>
-          <h1 data-scramble>{copy.title}</h1>
-          <p className="index-intro">{copy.intro}</p>
+          <p className="eyebrow" data-typo="meta">{copy.eyebrow}</p>
+          <h1 data-typo="hero">{copy.title}</h1>
+          <p className="index-intro" data-typo="body">{copy.intro}</p>
         </div>
       </section>
       <section className="index-content" data-text-reveal>
-        {children ?? <p className="empty-record">{copy.empty}</p>}
+        {children ?? <p className="empty-record" data-typo="body">{copy.empty}</p>}
       </section>
       <Link className="back-link" href="/"><span aria-hidden="true">←</span> {siteCopy.common.back}</Link>
     </main>

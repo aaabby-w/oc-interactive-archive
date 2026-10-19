@@ -64,9 +64,9 @@ export default async function CharacterPage({ params }: CharacterPageProps) {
         <div className="profile-art-overlay" aria-hidden="true" />
 
         <div className="profile-art-title" data-text-reveal>
-          <p>{siteCopy.common.profile}</p>
-          <h1 id="profile-title" data-scramble>{heroName.zh}</h1>
-          <span>{heroName.en}</span>
+          <p data-typo="meta">{siteCopy.common.profile}</p>
+          <h1 id="profile-title" data-typo="hero">{heroName.zh}</h1>
+          <span data-typo="meta">{heroName.en}</span>
         </div>
 
         <div className="profile-art-folio" aria-hidden="true">

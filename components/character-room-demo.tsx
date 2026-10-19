@@ -260,9 +260,9 @@ export function CharacterRoomDemo({
   return (
     <section className="residence-section" aria-labelledby="residence-title">
       <div className="residence-intro" data-text-reveal>
-        <p className="section-index">{siteCopy.residence.eyebrow}</p>
-        <h2 id="residence-title">{siteCopy.residence.title}</h2>
-        <p>{siteCopy.residence.intro}</p>
+        <p className="section-index" data-typo="meta">{siteCopy.residence.eyebrow}</p>
+        <h2 id="residence-title" data-typo="heading">{siteCopy.residence.title}</h2>
+        <p data-typo="body">{siteCopy.residence.intro}</p>
       </div>
       <div className="residence-board">
         <span className="board-pin board-pin-a" aria-hidden="true" />

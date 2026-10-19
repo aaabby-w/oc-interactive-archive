@@ -40,10 +40,10 @@ export default async function CharacterArchivePage({ params }: CharacterArchiveP
           <span>SIS</span><i /><span>104</span>
         </div>
         <div className="dossier-hero-copy" data-text-reveal>
-          <p>CHARACTER DOSSIER · NO. {String(entry.order).padStart(3, "0")}</p>
-          <h1 data-scramble>{heroName.zh}</h1>
-          <span>{heroName.en}</span>
-          <blockquote>“{profile?.quote}”</blockquote>
+          <p data-typo="meta">CHARACTER DOSSIER · NO. {String(entry.order).padStart(3, "0")}</p>
+          <h1 data-typo="hero">{heroName.zh}</h1>
+          <span data-typo="meta">{heroName.en}</span>
+          <blockquote data-typo="quote">“{profile?.quote}”</blockquote>
         </div>
         <Link className="dossier-back" href={`/characters/${character.slug}`}>
           <span aria-hidden="true">←</span> 返回人物页
@@ -55,13 +55,13 @@ export default async function CharacterArchivePage({ params }: CharacterArchiveP
           <span>01</span><p>IDENTITY RECORD</p>
         </div>
         <div className="dossier-summary-copy" data-text-reveal>
-          <h2 id="dossier-summary-title">人物记录</h2>
-          {archive.lede ? <p>{archive.lede}</p> : null}
+          <h2 id="dossier-summary-title" data-typo="heading">人物记录</h2>
+          {archive.lede ? <p data-typo="body">{archive.lede}</p> : null}
         </div>
         {profile?.facts?.length ? (
           <dl className="dossier-facts">
             {profile.facts.map((fact) => (
-              <div key={`${fact.label}-${fact.value}`}>
+              <div key={`${fact.label}-${fact.value}`} data-typo="line">
                 <dt>{fact.label}<small>{fact.labelEn}</small></dt>
                 <dd>{fact.value}</dd>
               </div>
@@ -76,10 +76,10 @@ export default async function CharacterArchivePage({ params }: CharacterArchiveP
             <span>02</span><p>APPEARANCE</p>
           </div>
           <div className="dossier-appearance-body">
-            <h2 id="dossier-appearance-title">外貌记录</h2>
+            <h2 id="dossier-appearance-title" data-typo="heading">外貌记录</h2>
             <dl>
               {profile.appearance.map((fact) => (
-                <div key={fact.label}>
+                <div key={fact.label} data-typo="line">
                   <dt>{fact.label}</dt>
                   <dd>{fact.value}</dd>
                 </div>
@@ -94,11 +94,11 @@ export default async function CharacterArchivePage({ params }: CharacterArchiveP
           <span>03</span><p>RESTRICTED HISTORY</p>
         </div>
         <div className="dossier-narrative-body">
-          <h2 id="dossier-narrative-title">经历档案</h2>
+          <h2 id="dossier-narrative-title" data-typo="heading">经历档案</h2>
           {archive.contentWarning ? (
             <aside className="dossier-warning">
               <strong>内容提示</strong>
-              <p>{archive.contentWarning}</p>
+              <p data-typo="body">{archive.contentWarning}</p>
             </aside>
           ) : null}
 
@@ -111,10 +111,10 @@ export default async function CharacterArchivePage({ params }: CharacterArchiveP
             <div className="dossier-story-content">
               {archive.sections.map((section) => (
                 <article key={section.title}>
-                  {section.eyebrow ? <p>{section.eyebrow}</p> : null}
-                  <h3>{section.title}</h3>
+                  {section.eyebrow ? <p data-typo="meta">{section.eyebrow}</p> : null}
+                  <h3 data-typo="heading">{section.title}</h3>
                   {section.paragraphs.map((paragraph, index) => (
-                    <p key={`${section.title}-${index}`}>{paragraph}</p>
+                    <p key={`${section.title}-${index}`} data-typo="body">{paragraph}</p>
                   ))}
                 </article>
               ))}
@@ -124,7 +124,7 @@ export default async function CharacterArchivePage({ params }: CharacterArchiveP
           {archive.relationNote ? (
             <aside className="dossier-relation">
               <span>RELATION NOTE</span>
-              <p>{archive.relationNote}</p>
+              <p data-typo="body">{archive.relationNote}</p>
             </aside>
           ) : null}
         </div>

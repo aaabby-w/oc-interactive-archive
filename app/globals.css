@@ -3457,6 +3457,43 @@ html.theme-changing .theme-icon {
   transform: none;
 }
 
+/* Scroll typography: character motion for display copy, restrained block motion for reading copy. */
+[data-typo] {
+  backface-visibility: hidden;
+}
+
+[data-typo-split="true"] {
+  white-space: pre-wrap;
+}
+
+.typo-char-frame {
+  display: inline-block;
+  overflow: hidden;
+  margin-block: -0.12em;
+  padding-block: 0.12em;
+  vertical-align: top;
+}
+
+.typo-char-frame.typo-space {
+  width: 0.28em;
+  overflow: visible;
+}
+
+.typo-char {
+  display: inline-block;
+  min-width: 0.02em;
+  will-change: transform, opacity;
+}
+
+[data-typo="quote"] .typo-char-frame {
+  overflow: visible;
+}
+
+[data-typo="body"],
+[data-typo="line"] {
+  will-change: transform, opacity, clip-path;
+}
+
 .hero-tunnel {
   position: absolute;
   z-index: 3;
@@ -3812,6 +3849,8 @@ html.theme-changing .theme-icon {
 @media (prefers-reduced-motion: reduce) {
   [data-text-reveal],
   [data-text-reveal][data-reveal-pending="true"] { opacity: 1; filter: none; clip-path: none; transform: none; }
+  [data-typo],
+  [data-typo] .typo-char { opacity: 1 !important; clip-path: none !important; transform: none !important; }
   .route-atmosphere,
   .hero-tunnel { animation: none; }
 }

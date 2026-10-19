@@ -147,9 +147,9 @@ export function WorldAtlas() {
     <main className="world-atlas-page" id="main-content" tabIndex={-1}>
       <section className="world-atlas" aria-labelledby="world-atlas-title">
         <header className="world-atlas-copy" data-text-reveal>
-          <p>{siteCopy.worldAtlas.eyebrow}</p>
-          <h1 id="world-atlas-title">{siteCopy.worldAtlas.title}</h1>
-          <span>{siteCopy.worldAtlas.intro}</span>
+          <p data-typo="meta">{siteCopy.worldAtlas.eyebrow}</p>
+          <h1 id="world-atlas-title" data-typo="hero">{siteCopy.worldAtlas.title}</h1>
+          <span data-typo="body">{siteCopy.worldAtlas.intro}</span>
         </header>
 
         <div className="world-atlas-stage">

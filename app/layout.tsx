@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { GlobalAtmosphere } from "@/components/global-atmosphere";
+import { ScrollTypography } from "@/components/scroll-typography";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
@@ -28,6 +29,7 @@ export default function RootLayout({
         <ThemeProvider>
           <a className="skip-link" href="#main-content">跳到主要内容</a>
           <GlobalAtmosphere />
+          <ScrollTypography />
           {children}
         </ThemeProvider>
       </body>

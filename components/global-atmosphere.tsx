@@ -47,6 +47,11 @@ export function GlobalAtmosphere() {
     );
 
     document.querySelectorAll<HTMLElement>("[data-text-reveal]").forEach((element) => {
+      if (element.querySelector("[data-typo]")) {
+        element.dataset.visible = "true";
+        delete element.dataset.revealPending;
+        return;
+      }
       const isBelowFold = element.getBoundingClientRect().top > window.innerHeight * 0.88;
       if (reduceMotion || !isBelowFold) {
         element.dataset.visible = "true";

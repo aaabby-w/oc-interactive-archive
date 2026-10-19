@@ -30,10 +30,10 @@ export default function CharactersPage() {
                 ) : <span />}
               </div>
               <div className="character-name">
-                <h2>{entry.character.displayName.zh}</h2>
-                <p>{entry.character.displayName.en}</p>
+                <h2 data-typo="heading">{entry.character.displayName.zh}</h2>
+                <p data-typo="meta">{entry.character.displayName.en}</p>
               </div>
-              <p className="character-summary">{entry.character.summary.zh}</p>
+              <p className="character-summary" data-typo="body">{entry.character.summary.zh}</p>
               <Link href={`/characters/${entry.character.slug}`} data-magnetic>{siteCopy.common.openRecord} <span aria-hidden="true">↗</span></Link>
             </article>
           );
