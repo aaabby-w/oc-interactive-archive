@@ -1,17 +1,9 @@
 import type { CharacterRegistryEntry } from "./types";
+import { qining } from "./qining";
 
 const character01: CharacterRegistryEntry = {
-  character: {
-    slug: "character-01",
-    displayName: { zh: "角色 01", en: "CHARACTER 01" },
-    summary: {
-      zh: "姓名、肖像与人物资料尚未录入。",
-      en: "IDENTITY RECORD PENDING",
-    },
-    media: {},
-    modules: {},
-    residence: {},
-  },
+  character: qining,
+  aliases: ["character-01"],
   isPublished: true,
   order: 1,
   featured: true,
@@ -68,8 +60,17 @@ export function getFeaturedCharacter() {
 
 export function getCharacterBySlug(slug: string) {
   return characterRegistry.find(
-    (entry) => entry.isPublished && entry.character.slug === slug,
+    (entry) =>
+      entry.isPublished &&
+      (entry.character.slug === slug || entry.aliases?.includes(slug)),
   );
+}
+
+export function getPublishedCharacterSlugs() {
+  return getPublishedCharacters().flatMap((entry) => [
+    entry.character.slug,
+    ...(entry.aliases ?? []),
+  ]);
 }
 
 export function getResidenceCharacters() {

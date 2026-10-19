@@ -15,6 +15,46 @@ export type CharacterGalleryItem = {
   alt: string;
   format: "full" | "portrait" | "landscape";
   focalPoint?: `${number}% ${number}%`;
+  fit?: "cover" | "contain";
+  title?: string;
+  titleEn?: string;
+  code?: string;
+  credit?: string;
+};
+
+export type CharacterFact = {
+  label: string;
+  value: string;
+  labelEn?: string;
+};
+
+export type CharacterArchiveSection = {
+  eyebrow?: string;
+  title: string;
+  paragraphs: string[];
+};
+
+export type CharacterProfile = {
+  callout?: string;
+  facts?: CharacterFact[];
+  keywords?: string[];
+  appearance?: CharacterFact[];
+  quote?: string;
+};
+
+export type CharacterArchive = {
+  lede: string;
+  contentWarning?: string;
+  sections: CharacterArchiveSection[];
+  relationNote?: string;
+};
+
+export type CharacterVisualDirection = {
+  accent?: string;
+  accentSoft?: string;
+  surface?: string;
+  titlePlacement?: "left" | "right";
+  heroName?: BilingualText;
 };
 
 export type CharacterModules = {
@@ -40,11 +80,15 @@ export type Character = {
   summary: BilingualText;
   media: CharacterMedia;
   modules: CharacterModules;
+  profile?: CharacterProfile;
+  archive?: CharacterArchive;
+  visual?: CharacterVisualDirection;
   residence?: CharacterResidence;
 };
 
 export type CharacterRegistryEntry = {
   character: Character;
+  aliases?: string[];
   isPublished: boolean;
   order: number;
   featured: boolean;

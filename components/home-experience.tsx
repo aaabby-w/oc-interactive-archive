@@ -10,15 +10,29 @@ import { siteCopy } from "@/content/site";
 const heroImage = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/images/hero-conservatory-placeholder.png`;
 
 type HomeExperienceProps = {
+  characterSlug: string;
   characterNameZh: string;
   characterNameEn?: string;
+  characterSummary: string;
+  characterArtwork?: string;
+  characterArtworkAlt?: string;
 };
 
 export function HomeExperience({
+  characterSlug,
   characterNameZh,
   characterNameEn,
+  characterSummary,
+  characterArtwork,
+  characterArtworkAlt,
 }: HomeExperienceProps) {
   const root = useRef<HTMLDivElement>(null);
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+  const featuredArtwork = characterArtwork
+    ? characterArtwork.startsWith("/")
+      ? `${basePath}${characterArtwork}`
+      : characterArtwork
+    : heroImage;
 
   useLayoutEffect(() => {
     const container = root.current;
@@ -129,19 +143,20 @@ export function HomeExperience({
         </div>
         <div className="chapter-art-window" data-reveal data-tilt-card>
           <Image
-            src={heroImage}
-            alt=""
+            src={featuredArtwork}
+            alt={characterArtworkAlt ?? ""}
             fill
             sizes="(max-width: 760px) 88vw, 52vw"
+            style={{ objectFit: characterArtwork ? "contain" : "cover" }}
           />
-          <span className="chapter-art-label">{siteCopy.home.futureCharacterArt}</span>
+          {!characterArtwork ? <span className="chapter-art-label">{siteCopy.home.futureCharacterArt}</span> : null}
         </div>
         <div className="chapter-copy" data-reveal>
           <p className="section-index">01 / FEATURED CHARACTER</p>
           <h2>{characterNameZh}</h2>
           <p className="chapter-en">{characterNameEn}</p>
-          <p>{siteCopy.home.featuredIntro}</p>
-          <Link className="text-link" href="/characters/character-01">
+          <p>{characterSummary}</p>
+          <Link className="text-link" href={`/characters/${characterSlug}`}>
             {siteCopy.common.openRecord}<span aria-hidden="true">↗</span>
           </Link>
         </div>
