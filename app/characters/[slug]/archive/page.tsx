@@ -56,7 +56,7 @@ export default async function CharacterArchivePage({ params }: CharacterArchiveP
         </div>
         <div className="dossier-summary-copy" data-text-reveal>
           <h2 id="dossier-summary-title">人物记录</h2>
-          <p>{archive.lede}</p>
+          {archive.lede ? <p>{archive.lede}</p> : null}
         </div>
         {profile?.facts?.length ? (
           <dl className="dossier-facts">

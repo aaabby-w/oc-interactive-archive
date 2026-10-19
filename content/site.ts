@@ -115,7 +115,6 @@ export const siteCopy = {
     showcase: {
       eyebrow: "CHARACTER SHOWCASE",
       title: "形象展示",
-      intro: "立绘、头像、草图与片段会在这里逐步出现。不同画幅保留各自的观看距离。",
       pending: "影像待补",
       slots: [
         { zh: "立绘", en: "FULL BODY", code: "FIG. 01" },
@@ -128,7 +127,6 @@ export const siteCopy = {
     archive: {
       eyebrow: "CHARACTER DOSSIER",
       title: "人物档案",
-      intro: "文字记录、人物经历与关系资料将集中收录于档案中。",
       pending: "文字资料待录入",
       open: "进入人物档案",
       openEn: "OPEN DOSSIER",

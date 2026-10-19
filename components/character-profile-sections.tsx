@@ -48,7 +48,6 @@ export function CharacterShowcase({ character }: { character: Character }) {
       <header className="showcase-heading" data-text-reveal>
         <p>{siteCopy.characterPage.showcase.eyebrow}</p>
         <h2 id={headingId}>{siteCopy.characterPage.showcase.title}</h2>
-        <span>{siteCopy.characterPage.showcase.intro}</span>
       </header>
 
       <div className="showcase-grid" data-count={items.length}>
@@ -91,8 +90,8 @@ export function CharacterArchiveGateway({ character }: { character: Character })
       <div className="archive-gateway-copy" data-text-reveal>
         <p>{siteCopy.characterPage.archive.eyebrow}</p>
         <h2 id={headingId}>{siteCopy.characterPage.archive.title}</h2>
-        <span>{character.archive.lede}</span>
-        <small>{character.archive.contentWarning ?? siteCopy.characterPage.archive.intro}</small>
+        {character.archive.lede ? <span>{character.archive.lede}</span> : null}
+        {character.archive.contentWarning ? <small>{character.archive.contentWarning}</small> : null}
       </div>
       <Link className="archive-gateway-link" href={`/characters/${character.slug}/archive`} data-magnetic>
         <span>{siteCopy.characterPage.archive.open}<small>{siteCopy.characterPage.archive.openEn}</small></span>

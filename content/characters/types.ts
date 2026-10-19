@@ -43,7 +43,7 @@ export type CharacterProfile = {
 };
 
 export type CharacterArchive = {
-  lede: string;
+  lede?: string;
   contentWarning?: string;
   sections: CharacterArchiveSection[];
   relationNote?: string;
