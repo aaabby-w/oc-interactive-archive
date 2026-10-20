@@ -14,6 +14,10 @@ export const siteCopy = {
   theme: {
     toLight: "切换为浅色模式",
     toDark: "切换为深色模式",
+    lightOn: "开灯",
+    lightOnEn: "LIGHT ON",
+    lightOff: "关灯",
+    lightOffEn: "LIGHT OFF",
   },
   home: {
     issue: "ISSUE 00",

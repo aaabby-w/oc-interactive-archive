@@ -6,6 +6,12 @@
 
 The preferred theme is light: warm mineral white, pale mint, fog blue-gray, and deep green-gray type. A one-click dark theme keeps the same composition and shifts it into a low-light observational mood; it is not a separate design.
 
+Character dossier routes frame this theme change as a reading-room light. Their
+light state keeps the character's pale surface color and a soft overhead glow;
+their dark state derives a deep ink-blue ground from the same character accent.
+The control says “开灯 / 关灯” on dossier pages while remaining the compact
+sun–moon control elsewhere.
+
 The supplied *Reverse: 1999* reference is used for principles only: Chinese/English hierarchy, sparse asymmetry, large serif display type, layered media, fine linework, and a small warm accent on a nearly black field. Do not copy its logo, characters, layout, text, assets, or distinctive branded motifs.
 
 ## Type roles
