@@ -1,3 +1,4 @@
+@import "@fontsource/noto-serif-sc/400.css";
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "../vendor/shadcn-tailwind-4.13.0.css";
@@ -18,8 +19,8 @@
   --hero-overlay: linear-gradient(90deg, rgba(239, 242, 235, 0.78) 0%, rgba(239, 242, 235, 0.38) 35%, rgba(239, 242, 235, 0.06) 66%, rgba(239, 242, 235, 0.14) 100%);
   --hero-filter: saturate(0.82) contrast(0.94) brightness(1.02);
   --cursor-color: rgba(74, 117, 100, 0.66);
-  /* Put the CJK face first so iOS does not let Iowan fall back to PingFang. */
-  --font-display: "Songti SC", "STSong", "STFangsong", serif;
+  /* Noto Serif SC is bundled with the site; system faces remain fallbacks only. */
+  --font-display: "Noto Serif SC", "Songti SC", "STSong", "STFangsong", serif;
   --font-display-latin: "Iowan Old Style", "Baskerville", "Times New Roman", serif;
   --font-sans: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -1042,15 +1043,20 @@ html.theme-changing .theme-icon {
 /* Full-bleed character artwork */
 .profile-page {
   color: var(--hero-text);
-  background: #dce2d9;
+  background: var(--character-surface);
   overflow-x: hidden;
   overflow-y: auto;
 }
 
 .profile-page {
   --character-accent: var(--ember);
-  --character-accent-soft: var(--ink-soft);
-  --character-surface: var(--ink);
+  --character-accent-soft: var(--character-accent-soft-light, var(--ink-soft));
+  --character-surface: var(--character-surface-light, var(--ink));
+}
+
+[data-theme="dark"] .profile-page {
+  --character-accent-soft: color-mix(in srgb, var(--character-accent) 13%, var(--ink-soft));
+  --character-surface: color-mix(in srgb, var(--character-accent) 7%, var(--ink));
 }
 
 .profile-page .profile-art-title p,

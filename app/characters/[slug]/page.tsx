@@ -36,8 +36,8 @@ export default async function CharacterPage({ params }: CharacterPageProps) {
   const heroName = visual?.heroName ?? entry.character.displayName;
   const characterStyle = {
     "--character-accent": visual?.accent,
-    "--character-accent-soft": visual?.accentSoft,
-    "--character-surface": visual?.surface,
+    "--character-accent-soft-light": visual?.accentSoft,
+    "--character-surface-light": visual?.surface,
   } as CSSProperties;
 
   return (

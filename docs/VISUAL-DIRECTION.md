@@ -12,11 +12,16 @@ their dark state derives a deep ink-blue ground from the same character accent.
 The control says “开灯 / 关灯” on dossier pages while remaining the compact
 sun–moon control elsewhere.
 
+Character profile routes follow the same color logic: character records provide
+the light surface palette, while dark mode derives low-light surfaces from the
+global ink colors and the character accent. Character-specific inline colors
+must not pin a section to the light theme.
+
 The supplied *Reverse: 1999* reference is used for principles only: Chinese/English hierarchy, sparse asymmetry, large serif display type, layered media, fine linework, and a small warm accent on a nearly black field. Do not copy its logo, characters, layout, text, assets, or distinctive branded motifs.
 
 ## Type roles
 
-- Chinese display: high-contrast Song/Ming-style system serif stack until a licensed self-hosted font is selected.
+- Chinese display: self-hosted Noto Serif SC (SIL Open Font License 1.1), with Songti system faces retained only as fallbacks. The bundled webfont keeps the intended Ming-style forms consistent across desktop and mobile.
 - English display: classical editorial serif, large and airy.
 - Metadata: compact sans serif, uppercase where appropriate, generous tracking.
 - Body: Chinese-first, readable at 16px or larger.

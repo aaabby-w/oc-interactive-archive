@@ -5,6 +5,7 @@
 - Keep the initial route useful without JavaScript-only media.
 - Do not ship GSAP, Three.js, R3F, or Drei before a page uses them.
 - Self-host critical assets.
+- Load the self-hosted Chinese display face through its Unicode-range slices so browsers fetch only the glyph ranges used by the current page.
 - Reserve media dimensions to avoid layout shift.
 - Lazy-load below-the-fold media and route-specific heavy code.
 - Honor reduced motion and lower mobile effects without reducing content.
