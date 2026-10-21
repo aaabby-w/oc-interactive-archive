@@ -4131,18 +4131,26 @@ html.theme-changing .theme-icon {
   inset: 0 clamp(290px, 31vw, 370px) 0 0;
   overflow: hidden;
   contain: layout paint;
+  cursor: grab;
+  overscroll-behavior: contain;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
+.world-atlas-viewport[data-dragging="true"] { cursor: grabbing; }
+.world-atlas-viewport:focus-visible { outline: 2px solid var(--ember); outline-offset: -2px; }
+
+/* One finger keeps scrolling the page vertically; pinch and horizontal drags go to the map. */
+@media (pointer: coarse) {
+  .world-atlas-viewport { touch-action: pan-y; }
+}
+
+/* The transform and --atlas-k are written every frame by lib/atlas-camera.ts. */
 .world-atlas-geo {
-  --atlas-focus-x: 50%;
-  --atlas-focus-y: 50%;
-  --atlas-turn: 0deg;
   position: absolute;
-  inset: 1% 0 0;
-  transform: scale(1.34) rotate(var(--atlas-turn));
-  transform-origin: var(--atlas-focus-x) var(--atlas-focus-y);
-  transition: transform 880ms cubic-bezier(0.16, 1, 0.3, 1), transform-origin 640ms cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: transform;
+  inset: 0;
+  transform-origin: 0 0;
 }
 
 .world-atlas-map {
@@ -4188,8 +4196,7 @@ html.theme-changing .theme-icon {
   color: var(--bone);
   cursor: pointer;
   place-items: center;
-  transform: translate(-50%, -50%) scale(calc(1 / 1.34));
-  transition: transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform: translate(-50%, -50%) scale(calc(1 / var(--atlas-k, 1)));
 }
 
 .world-atlas-points button::before,
@@ -4248,6 +4255,41 @@ html.theme-changing .theme-icon {
 .world-atlas-points button.is-active small { opacity: 1; transform: none; }
 
 .world-atlas-points button:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; border-radius: 50%; }
+
+.world-atlas-viewport[data-zoom="near"] .world-atlas-points button small { opacity: 0.82; transform: none; }
+
+.world-atlas-controls {
+  position: absolute;
+  z-index: 6;
+  bottom: 16px;
+  left: 16px;
+  display: grid;
+  grid-template-columns: repeat(3, 44px);
+  border: 1px solid var(--hairline);
+  background: color-mix(in srgb, var(--ink) 86%, transparent);
+  cursor: default;
+}
+
+.world-atlas-controls button {
+  display: grid;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid var(--hairline);
+  background: transparent;
+  color: var(--character-accent, var(--ember));
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 300;
+  place-items: center;
+  transition: background 220ms ease, color 220ms ease;
+}
+
+.world-atlas-controls button:first-child { border-left: 0; }
+.world-atlas-controls button:last-child { font-size: 11px; letter-spacing: 0.08em; }
+.world-atlas-controls button:hover { background: color-mix(in srgb, var(--ember) 14%, transparent); color: var(--bone); }
+.world-atlas-controls button:focus-visible { position: relative; z-index: 1; outline: 2px solid var(--ember); outline-offset: -2px; }
 
 .world-city-card {
   position: absolute;
@@ -4339,9 +4381,9 @@ html.theme-changing .theme-icon {
   .world-atlas-copy h1 { margin: 12px 0 17px; font-size: clamp(44px, 13.5vw, 62px); }
   .world-atlas-copy span { display: block; max-width: 96%; font-size: 14px; line-height: 1.75; }
   .world-atlas-stage { display: grid; gap: 14px; min-height: 0; margin-top: 28px; }
-  .world-atlas-viewport { position: relative; inset: auto; width: 100%; aspect-ratio: 1.65; border-block: 1px solid var(--hairline); }
-  .world-atlas-geo { inset: 5% 0; transform: scale(1.04) rotate(var(--atlas-turn)); }
-  .world-atlas-points button { width: 44px; height: 44px; transform: translate(-50%, -50%) scale(calc(1 / 1.04)); }
+  .world-atlas-viewport { position: relative; inset: auto; width: 100%; aspect-ratio: 1.83; border-block: 1px solid var(--hairline); }
+  .world-atlas-controls { bottom: 10px; left: 10px; }
+  .world-atlas-points button { width: 44px; height: 44px; }
   .world-atlas-points button::before { inset: 7px; }
   .world-atlas-points button small { top: 35px; font-size: 7px; }
   .world-city-card { position: relative; right: auto; bottom: auto; width: 100%; min-height: 245px; padding: 18px 18px 13px; }
@@ -4370,8 +4412,6 @@ html.theme-changing .theme-icon {
 
 @media (prefers-reduced-motion: reduce) {
   .world-atlas-route-overlay { animation: none; }
-  .world-atlas-geo { transition: none; transform: none; }
-  .world-atlas-points button { transform: translate(-50%, -50%); }
 }
 
 @media (max-height: 520px) and (orientation: landscape) {

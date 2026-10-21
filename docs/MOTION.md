@@ -24,6 +24,17 @@ short character cadence, and reading copy uses a quieter block reveal. Closed
 scrolling, restore their original markup on route changes, and become static
 when reduced motion is requested.
 
+## World atlas camera
+
+`lib/atlas-camera.ts` owns every transform on the world map; CSS never animates it.
+
+- One `translate + scale` per frame, in viewport-normalised units, so resizing cannot desynchronise the view and the map always covers its frame.
+- Wheel, pinch, double-click, buttons and keys ease the view toward a target with one shared factor for position and zoom, which keeps the point under the cursor fixed.
+- Dragging follows the pointer, then glides on release. Vertical touch drags still scroll the page; at minimum zoom a downward wheel scrolls the page too.
+- Selecting a city is a timed flight that arcs the zoom on long hops. Hover only previews the city card; it never moves the camera.
+- The layer is promoted only while moving, so the map re-rasterises sharply at rest. City markers counter-scale from `--atlas-k`.
+- Reduced motion jumps straight to the target view; keyboard (`+ - 0`, arrows) and button controls cover non-pointer use.
+
 ## Later scroll storytelling
 
 - Native scrolling remains in control.

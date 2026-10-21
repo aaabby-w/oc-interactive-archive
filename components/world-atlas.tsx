@@ -1,16 +1,33 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { siteCopy } from "@/content/site";
+import {
+  ATLAS_FOCUS_ZOOM,
+  AtlasCamera,
+  viewForPoint,
+  viewToTransform,
+} from "@/lib/atlas-camera";
 import { projectToRobinsonPercent } from "@/lib/robinson-projection";
 
 const cities = siteCopy.worldAtlas.cities.map((city) => ({
   ...city,
   ...projectToRobinsonPercent(city.latitude, city.longitude),
 }));
+
+// Rendered on the server too, so the first paint already frames the first city.
+const INITIAL_VIEW = viewForPoint(cities[0].x / 100, cities[0].y / 100, ATLAS_FOCUS_ZOOM);
+const INITIAL_GEO_STYLE = {
+  transform: viewToTransform(INITIAL_VIEW),
+  "--atlas-k": INITIAL_VIEW.k.toFixed(4),
+} as CSSProperties;
+
+/** Pointer must rest on a node this long before the card follows it. */
+const HOVER_INTENT_MS = 140;
+const BUTTON_ZOOM_STEP = 1.7;
 
 type WeatherReading = {
   temperature: number;
@@ -76,6 +93,43 @@ export function WorldAtlas() {
   const [weather, setWeather] = useState<WeatherState>({ cityCode: "", status: "loading" });
   const active = cities[activeIndex];
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const geoRef = useRef<HTMLDivElement>(null);
+  const cameraRef = useRef<AtlasCamera | null>(null);
+  const hoverTimer = useRef(0);
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    const geo = geoRef.current;
+    if (!viewport || !geo) return;
+    const camera = new AtlasCamera(viewport, geo, INITIAL_VIEW);
+    cameraRef.current = camera;
+    return () => {
+      camera.destroy();
+      cameraRef.current = null;
+      window.clearTimeout(hoverTimer.current);
+    };
+  }, []);
+
+  const flyToCity = useCallback((index: number) => {
+    const camera = cameraRef.current;
+    if (!camera) return;
+    const city = cities[index];
+    // Keep a deeper zoom the visitor chose; never fly out to something shallower than the focus level.
+    camera.flyTo(city.x / 100, city.y / 100, Math.max(ATLAS_FOCUS_ZOOM, camera.zoom));
+  }, []);
+
+  const selectCity = useCallback((index: number) => {
+    setActiveIndex(index);
+    flyToCity(index);
+  }, [flyToCity]);
+
+  const previewCity = useCallback((index: number) => {
+    window.clearTimeout(hoverTimer.current);
+    hoverTimer.current = window.setTimeout(() => setActiveIndex(index), HOVER_INTENT_MS);
+  }, []);
+
+  const cancelPreview = useCallback(() => window.clearTimeout(hoverTimer.current), []);
 
   useEffect(() => {
     const update = () => setNow(new Date());
@@ -132,11 +186,6 @@ export function WorldAtlas() {
     () => cities.map((city, index) => `${index === 0 ? "M" : "L"}${city.x} ${city.y}`).join(" "),
     [],
   );
-  const mapStyle = {
-    "--atlas-focus-x": `${active.x}%`,
-    "--atlas-focus-y": `${active.y}%`,
-    "--atlas-turn": `${((activeIndex % 3) - 1) * 0.7}deg`,
-  } as CSSProperties;
   const coordinates = `${formatCoordinate(active.latitude, "N", "S")} · ${formatCoordinate(active.longitude, "E", "W")}`;
   const time = now ? formatLocalTime(active.timeZone, now) : "--:--:--";
   const visibleWeather: WeatherState = weather.cityCode === active.code
@@ -153,8 +202,15 @@ export function WorldAtlas() {
         </header>
 
         <div className="world-atlas-stage">
-          <div className="world-atlas-viewport" aria-label={siteCopy.worldAtlas.mapLabel}>
-            <div className="world-atlas-geo" style={mapStyle}>
+          <div
+            className="world-atlas-viewport"
+            ref={viewportRef}
+            role="group"
+            tabIndex={0}
+            aria-label={siteCopy.worldAtlas.mapLabel}
+            aria-keyshortcuts="+ - 0 ArrowUp ArrowDown ArrowLeft ArrowRight"
+          >
+            <div className="world-atlas-geo" ref={geoRef} style={INITIAL_GEO_STYLE}>
               <Image
                 className="world-atlas-map"
                 src={`${basePath}/maps/world-robinson.svg`}
@@ -178,15 +234,28 @@ export function WorldAtlas() {
                     style={{ left: `${city.x}%`, top: `${city.y}%` }}
                     aria-label={`${city.name}，${city.country}`}
                     aria-current={index === activeIndex ? "location" : undefined}
-                    onPointerEnter={() => setActiveIndex(index)}
-                    onFocus={() => setActiveIndex(index)}
-                    onClick={() => setActiveIndex(index)}
+                    onPointerEnter={(event) => {
+                      if (event.pointerType === "mouse") previewCity(index);
+                    }}
+                    onPointerLeave={cancelPreview}
+                    onFocus={(event) => {
+                      setActiveIndex(index);
+                      // Pointer clicks fly from onClick; only keyboard focus should move the camera here.
+                      if (event.currentTarget.matches(":focus-visible")) flyToCity(index);
+                    }}
+                    onClick={() => selectCity(index)}
                   >
                     <span />
                     <small>{city.code}</small>
                   </button>
                 ))}
               </div>
+            </div>
+
+            <div className="world-atlas-controls" data-atlas-ignore role="group" aria-label={siteCopy.worldAtlas.controls.label}>
+              <button type="button" aria-label={siteCopy.worldAtlas.controls.zoomIn} onClick={() => cameraRef.current?.zoomBy(BUTTON_ZOOM_STEP)}>＋</button>
+              <button type="button" aria-label={siteCopy.worldAtlas.controls.zoomOut} onClick={() => cameraRef.current?.zoomBy(1 / BUTTON_ZOOM_STEP)}>－</button>
+              <button type="button" aria-label={siteCopy.worldAtlas.controls.world} onClick={() => cameraRef.current?.showWorld()}>{siteCopy.worldAtlas.controls.worldShort}</button>
             </div>
           </div>
 
@@ -226,7 +295,7 @@ export function WorldAtlas() {
               key={city.code}
               className={index === activeIndex ? "is-active" : ""}
               aria-current={index === activeIndex ? "location" : undefined}
-              onClick={() => setActiveIndex(index)}
+              onClick={() => selectCity(index)}
             >
               <span>{city.code}</span><small>{city.name}</small>
             </button>
