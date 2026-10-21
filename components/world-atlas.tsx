@@ -182,10 +182,14 @@ export function WorldAtlas() {
     return () => controller.abort();
   }, [active]);
 
-  const routePath = useMemo(
-    () => cities.map((city, index) => `${index === 0 ? "M" : "L"}${city.x} ${city.y}`).join(" "),
-    [],
-  );
+  const routePaths = useMemo(() => {
+    const cityByCode = new Map(cities.map((city) => [city.code, city]));
+    return siteCopy.worldAtlas.links.flatMap(([fromCode, toCode]) => {
+      const from = cityByCode.get(fromCode);
+      const to = cityByCode.get(toCode);
+      return from && to ? [`M${from.x} ${from.y} L${to.x} ${to.y}`] : [];
+    });
+  }, []);
   const coordinates = `${formatCoordinate(active.latitude, "N", "S")} · ${formatCoordinate(active.longitude, "E", "W")}`;
   const time = now ? formatLocalTime(active.timeZone, now) : "--:--:--";
   const visibleWeather: WeatherState = weather.cityCode === active.code
@@ -222,7 +226,7 @@ export function WorldAtlas() {
                 sizes="100vw"
               />
               <svg className="world-atlas-route-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-                <path d={routePath} />
+                {routePaths.map((path, index) => <path key={`${path}-${index}`} d={path} />)}
               </svg>
 
               <div className="world-atlas-points">

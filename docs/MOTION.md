@@ -26,6 +26,8 @@ when reduced motion is requested.
 
 ## World atlas camera
 
+The planar camera remains the reduced-motion and unavailable-WebGL fallback.
+
 `lib/atlas-camera.ts` owns every transform on the world map; CSS never animates it.
 
 - One `translate + scale` per frame, in viewport-normalised units, so resizing cannot desynchronise the view and the map always covers its frame.
@@ -34,6 +36,13 @@ when reduced motion is requested.
 - Selecting a city is a timed flight that arcs the zoom on long hops. Hover only previews the city card; it never moves the camera.
 - The layer is promoted only while moving, so the map re-rasterises sharply at rest. City markers counter-scale from `--atlas-k`.
 - Reduced motion jumps straight to the target view; keyboard (`+ - 0`, arrows) and button controls cover non-pointer use.
+
+## World command center
+
+- `/world` normally uses a continuous cylindrical Three.js wall. Wheel and trackpad deltas become horizontal rotation with exponential settling; pointer and touch drags use the same rotation state and keep a short release momentum.
+- City selection chooses the nearest equivalent turn of the cylinder, preventing an unnecessary full revolution. Field of view eases from overview to focus instead of jumping.
+- Radar rings are DOM overlays projected from Three.js city coordinates. Each reaches a bounded scale, fades, and restarts.
+- `prefers-reduced-motion: reduce` bypasses the WebGL room and returns the planar atlas with the same twenty-four cities, live weather, and designed network.
 
 ## Later scroll storytelling
 

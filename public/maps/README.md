@@ -2,6 +2,8 @@
 
 `world-robinson.svg` is based on **Blank world map Robinson projection.svg** by Justinkunimune, published through Wikimedia Commons under the CC0 1.0 Universal Public Domain Dedication.
 
+`world-equirectangular.svg`, `world-equirectangular-light.svg`, and `world-equirectangular-dark.svg` are generated locally from the same bundled geometry by `scripts/build-equirectangular-map.mjs`. The script reverses the Robinson table used by the source and places the recovered latitude/longitude coordinates on an equirectangular canvas for the seamless cylindrical command-center display. The explicit light and dark variants let the manual site theme change the actual map palette instead of dimming the completed canvas.
+
 - Source: https://commons.wikimedia.org/wiki/File:Blank_world_map_Robinson_projection.svg
 - Underlying border data: Natural Earth
 - Local changes: transparent water and archive palette colors for use in the interactive world page.
