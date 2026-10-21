@@ -90,7 +90,8 @@ export const qining: Character = {
     relationNote: "IF 线：与舒裕为师生关系。",
     sections: [
       {
-        title: "人物经历",
+        title: "童年",
+        titleEn: "CHILDHOOD",
         paragraphs: [
           "从资料来看，她大约在四岁时被拐卖到缅甸。",
           "……",

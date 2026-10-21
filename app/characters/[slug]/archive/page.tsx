@@ -16,6 +16,15 @@ function renderInlineEmphasis(text: string) {
   );
 }
 
+type ArchiveEntry = {
+  title: string;
+  titleEn?: string;
+  eyebrow?: string;
+  paragraphs: string[];
+  /** Appendix chapters open with an accent-colored lead line. */
+  lead: boolean;
+};
+
 export const dynamicParams = false;
 
 export function generateStaticParams() {
@@ -40,6 +49,27 @@ export default async function CharacterArchivePage({ params }: CharacterArchiveP
     "--character-accent-soft": visual?.accentSoft,
     "--character-surface": visual?.surface,
   } as CSSProperties;
+
+  // Sections and appendix chapters share one row component and one numbering sequence.
+  const entries: ArchiveEntry[] = [
+    ...archive.sections.map((section) => ({
+      title: section.title,
+      titleEn: section.titleEn,
+      eyebrow: section.eyebrow,
+      paragraphs: section.paragraphs,
+      lead: false,
+    })),
+    ...(archive.chapters ?? []).map((chapter) => ({
+      title: chapter.title,
+      titleEn: chapter.titleEn,
+      eyebrow: undefined,
+      paragraphs: chapter.body
+        .split(/\n\s*\n/g)
+        .map((paragraph) => paragraph.trim())
+        .filter(Boolean),
+      lead: true,
+    })),
+  ];
 
   return (
     <main className="dossier-page" id="main-content" tabIndex={-1} style={characterStyle}>
@@ -112,50 +142,31 @@ export default async function CharacterArchivePage({ params }: CharacterArchiveP
             </aside>
           ) : null}
 
-          <details className="dossier-story">
-            <summary>
-              <span>展开完整经历</span>
-              <small>OPEN RESTRICTED FILE</small>
-              <b aria-hidden="true">＋</b>
-            </summary>
-            <div className="dossier-story-content">
-              {archive.sections.map((section) => (
-                <article key={section.title}>
-                  {section.eyebrow ? <p data-typo="meta">{section.eyebrow}</p> : null}
-                  <h3 data-typo="heading">{section.title}</h3>
-                  {section.paragraphs.map((paragraph, index) => (
-                    <p key={`${section.title}-${index}`} data-typo="body">{paragraph}</p>
-                  ))}
-                </article>
-              ))}
-            </div>
-          </details>
-
-          {archive.chapters?.length ? (
-            <div className="dossier-chapters" aria-label="附录章节">
-              {archive.chapters.map((chapter, index) => (
-                <details className="dossier-chapter" key={chapter.title}>
-                  <summary>
-                    <span className="dossier-chapter-index">{String(index + 1).padStart(2, "0")}</span>
-                    <span className="dossier-chapter-title">
-                      <strong>{chapter.title}</strong>
-                      <small>{chapter.titleEn ?? `CHAPTER ${String(index + 1).padStart(2, "0")}`}</small>
-                    </span>
-                    <b aria-hidden="true">＋</b>
-                  </summary>
-                  <div className="dossier-chapter-content">
-                    {chapter.body
-                      .split(/\n\s*\n/g)
-                      .map((paragraph) => paragraph.trim())
-                      .filter(Boolean)
-                      .map((paragraph, paragraphIndex) => (
-                        <p key={`${chapter.title}-${paragraphIndex}`} data-typo="body">
+          {entries.length ? (
+            <div className="dossier-chapters" aria-label="经历章节">
+              {entries.map((entry, index) => {
+                const number = String(index + 1).padStart(2, "0");
+                return (
+                  <details className="dossier-chapter" key={entry.title}>
+                    <summary>
+                      <span className="dossier-chapter-index">{number}</span>
+                      <span className="dossier-chapter-title">
+                        <strong>{entry.title}</strong>
+                        <small>{entry.titleEn ?? `CHAPTER ${number}`}</small>
+                      </span>
+                      <b aria-hidden="true">＋</b>
+                    </summary>
+                    <div className="dossier-chapter-content" data-lead={entry.lead || undefined}>
+                      {entry.eyebrow ? <p data-typo="meta" className="dossier-chapter-eyebrow">{entry.eyebrow}</p> : null}
+                      {entry.paragraphs.map((paragraph, paragraphIndex) => (
+                        <p key={`${entry.title}-${paragraphIndex}`} data-typo="body">
                           {renderInlineEmphasis(paragraph)}
                         </p>
                       ))}
-                  </div>
-                </details>
-              ))}
+                    </div>
+                  </details>
+                );
+              })}
             </div>
           ) : null}
 

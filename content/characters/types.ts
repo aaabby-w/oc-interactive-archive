@@ -31,6 +31,7 @@ export type CharacterFact = {
 export type CharacterArchiveSection = {
   eyebrow?: string;
   title: string;
+  titleEn?: string;
   paragraphs: string[];
 };
 
