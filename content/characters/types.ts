@@ -34,6 +34,12 @@ export type CharacterArchiveSection = {
   paragraphs: string[];
 };
 
+export type CharacterArchiveChapter = {
+  title: string;
+  titleEn?: string;
+  body: string;
+};
+
 export type CharacterProfile = {
   callout?: string;
   facts?: CharacterFact[];
@@ -46,6 +52,7 @@ export type CharacterArchive = {
   lede?: string;
   contentWarning?: string;
   sections: CharacterArchiveSection[];
+  chapters?: CharacterArchiveChapter[];
   relationNote?: string;
 };
 

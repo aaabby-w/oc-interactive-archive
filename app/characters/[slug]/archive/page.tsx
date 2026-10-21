@@ -6,6 +6,16 @@ import { getCharacterBySlug, getPublishedCharacters } from "@/content/characters
 
 type CharacterArchivePageProps = { params: Promise<{ slug: string }> };
 
+function renderInlineEmphasis(text: string) {
+  return text.split(/(\*[^*]+\*)/g).map((part, index) =>
+    part.startsWith("*") && part.endsWith("*") ? (
+      <em key={`${part}-${index}`}>{part.slice(1, -1)}</em>
+    ) : (
+      part
+    ),
+  );
+}
+
 export const dynamicParams = false;
 
 export function generateStaticParams() {
@@ -120,6 +130,34 @@ export default async function CharacterArchivePage({ params }: CharacterArchiveP
               ))}
             </div>
           </details>
+
+          {archive.chapters?.length ? (
+            <div className="dossier-chapters" aria-label="附录章节">
+              {archive.chapters.map((chapter, index) => (
+                <details className="dossier-chapter" key={chapter.title}>
+                  <summary>
+                    <span className="dossier-chapter-index">{String(index + 1).padStart(2, "0")}</span>
+                    <span className="dossier-chapter-title">
+                      <strong>{chapter.title}</strong>
+                      <small>{chapter.titleEn ?? `CHAPTER ${String(index + 1).padStart(2, "0")}`}</small>
+                    </span>
+                    <b aria-hidden="true">＋</b>
+                  </summary>
+                  <div className="dossier-chapter-content">
+                    {chapter.body
+                      .split(/\n\s*\n/g)
+                      .map((paragraph) => paragraph.trim())
+                      .filter(Boolean)
+                      .map((paragraph, paragraphIndex) => (
+                        <p key={`${chapter.title}-${paragraphIndex}`} data-typo="body">
+                          {renderInlineEmphasis(paragraph)}
+                        </p>
+                      ))}
+                  </div>
+                </details>
+              ))}
+            </div>
+          ) : null}
 
           {archive.relationNote ? (
             <aside className="dossier-relation">

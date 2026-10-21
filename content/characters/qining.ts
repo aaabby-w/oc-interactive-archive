@@ -1,4 +1,5 @@
 import type { Character } from "./types";
+import { qiningArchiveChapters } from "./qining-chapters";
 
 export const qining: Character = {
   slug: "qining",
@@ -163,6 +164,7 @@ export const qining: Character = {
         ],
       },
     ],
+    chapters: qiningArchiveChapters,
   },
   modules: {
     story: true,
