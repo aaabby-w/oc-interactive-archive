@@ -35,6 +35,15 @@ when reduced motion is requested.
 - The layer is promoted only while moving, so the map re-rasterises sharply at rest. City markers counter-scale from `--atlas-k`.
 - Reduced motion jumps straight to the target view; keyboard (`+ - 0`, arrows) and button controls cover non-pointer use.
 
+## World ring
+
+`components/world-command-center.tsx` wraps `public/maps/world-equirectangular.svg` (latitude −56°…84°) around a cylinder and views it from the axis. The poles are cropped on purpose: the full −90°…90° band would stretch the map about five times wider than tall, while this crop keeps it near three.
+
+- Dragging, wheel, arrow keys and `0`/Home rotate the ring; selecting a city turns it to that longitude and narrows the field of view slightly. Vertical touch drags still scroll the page.
+- City nodes are DOM buttons positioned every frame from the 3D position, so they stay focusable and keyboard-reachable.
+- Reduced motion, missing WebGL, or a failed texture load fall back to the flat `WorldAtlas`.
+- `record` and `radar` on a city are optional; the panel omits the record block when none is written.
+
 ## Later scroll storytelling
 
 - Native scrolling remains in control.

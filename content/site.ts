@@ -52,6 +52,17 @@ export const siteCopy = {
     intro: "悬停城市节点查看记录，点击后地图会飞向该处；也可以滚轮、双指或按钮缩放，拖动平移。角落中的观测卡记录当地时间与此刻天气。",
     mapLabel: "包含主要城市节点的交互式世界地图，可缩放和拖动",
     hint: "滚轮缩放 · 拖动平移 · 点击飞行 · SCROLL / DRAG / TAP",
+    ringLabel: "可旋转的环形世界地图，包含主要城市节点",
+    ringIntro: "地图环绕在你四周。拖动或滚轮转动环带，点击城市节点聚焦；观测卡记录当地时间与此刻天气。",
+    ringHint: "拖动或滚轮转动 · 点击节点聚焦 · DRAG / SCROLL / TAP",
+    ringMode: "环形观测 / RING VIEW",
+    overview: "全景",
+    record: "城市记录",
+    // Consecutive cities form the dotted route drawn across the map.
+    links: [
+      ["TOR", "NYC"], ["NYC", "MEX"], ["MEX", "SAO"], ["SAO", "LON"], ["LON", "PAR"], ["PAR", "CAI"],
+      ["CAI", "DXB"], ["DXB", "SIN"], ["SIN", "SHA"], ["SHA", "TYO"], ["TYO", "SYD"],
+    ],
     controls: {
       label: "地图缩放控制",
       zoomIn: "放大",
