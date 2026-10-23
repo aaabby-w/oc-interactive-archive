@@ -4485,6 +4485,30 @@ html.theme-changing .theme-icon {
 .command-map-zoom button { min-width: 44px; min-height: 44px; padding: 8px; border: 0; background: transparent; font: 15px/1.4 var(--font-display); }
 .command-map-zoom button:hover { background: var(--ink-soft); }
 .command-map-zoom button:focus-visible { outline: 2px solid var(--ember); outline-offset: -3px; }
+/* Translucent mineral-paper surfaces; the map stays visible through the tint. */
+.world-command .atlas-glass {
+  background: radial-gradient(ellipse at var(--glass-light-x, 50%) var(--glass-light-y, 25%), rgba(255,255,255,.13), transparent 68%), color-mix(in srgb,var(--ink) var(--glass-opacity, 64%),transparent);
+  backdrop-filter: blur(9px) saturate(.85);
+  -webkit-backdrop-filter: blur(9px) saturate(.85);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.24), 0 8px 24px rgba(29,53,44,.07);
+  transform: perspective(1100px) rotateX(var(--glass-rx,0deg)) rotateY(var(--glass-ry,0deg));
+  transform-origin: center;
+  transition: transform 380ms cubic-bezier(.2,.7,.2,1), border-color 250ms;
+}
+.world-command .command-place-index.atlas-glass { --glass-opacity: 52%; }
+.world-command .command-map-zoom.atlas-glass { --glass-opacity: 58%; }
+.world-command .atlas-glass:hover { border-color: var(--ember-line); }
+[data-theme="dark"] .world-command .atlas-glass { --glass-opacity: 62%; box-shadow: inset 0 1px 0 rgba(224,241,232,.12), 0 8px 24px rgba(0,0,0,.14); }
+.command-ring-nodes small { background: color-mix(in srgb,var(--ink) 70%,transparent); backdrop-filter: blur(6px); }
+@media (hover: none), (pointer: coarse), (prefers-reduced-motion: reduce) {
+  .world-command .atlas-glass { transform: none; transition: none; }
+}
+@media (prefers-contrast: more), (prefers-reduced-transparency: reduce) {
+  .world-command .atlas-glass, [data-theme="dark"] .world-command .atlas-glass { --glass-opacity: 96%; }
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .world-command .atlas-glass, [data-theme="dark"] .world-command .atlas-glass { --glass-opacity: 92%; }
+}
 @media (max-width: 1000px) {
   .world-command-copy { left: 20px; }
   .command-city-panel { right: 20px; width: 280px; }

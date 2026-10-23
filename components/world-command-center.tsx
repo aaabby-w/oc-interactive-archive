@@ -624,7 +624,64 @@ export function WorldCommandCenter() {
   const controllerRef = useRef<SceneController | null>(null);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const railRef = useRef<HTMLElement>(null);
+  const surfaceRef = useRef<HTMLElement>(null);
   const active = cities[activeIndex];
+
+  useEffect(() => {
+    const surfaces = surfaceRef.current?.querySelectorAll<HTMLElement>("[data-atlas-tilt]");
+    if (!surfaces) return;
+    const enabled = window.matchMedia("(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)");
+    const cleanups = [...surfaces].map((element) => {
+      let bounds: DOMRect | null = null;
+      let frame = 0;
+      let x = 0;
+      let y = 0;
+      const reset = () => {
+        cancelAnimationFrame(frame);
+        frame = 0;
+        bounds = null;
+        element.style.setProperty("--glass-rx", "0deg");
+        element.style.setProperty("--glass-ry", "0deg");
+        element.style.removeProperty("--glass-light-x");
+        element.style.removeProperty("--glass-light-y");
+      };
+      const enter = (event: PointerEvent) => {
+        if (enabled.matches && event.pointerType === "mouse") bounds = element.getBoundingClientRect();
+      };
+      const move = (event: PointerEvent) => {
+        if (!enabled.matches || event.pointerType !== "mouse" || event.buttons || !bounds) return;
+        // Cache the un-tilted bounds on entry: remeasuring the moving surface
+        // every frame would feed its own transform back into the pointer math.
+        x = Math.max(-1, Math.min(1, (event.clientX - bounds.left) / bounds.width * 2 - 1));
+        y = Math.max(-1, Math.min(1, (event.clientY - bounds.top) / bounds.height * 2 - 1));
+        if (frame) return;
+        frame = requestAnimationFrame(() => {
+          frame = 0;
+          const strength = Number(element.dataset.atlasTilt) || 1;
+          element.style.setProperty("--glass-rx", `${(-y * strength).toFixed(2)}deg`);
+          element.style.setProperty("--glass-ry", `${(x * strength).toFixed(2)}deg`);
+          element.style.setProperty("--glass-light-x", `${(x + 1) * 50}%`);
+          element.style.setProperty("--glass-light-y", `${(y + 1) * 50}%`);
+        });
+      };
+      element.addEventListener("pointerenter", enter);
+      element.addEventListener("pointermove", move);
+      element.addEventListener("pointerleave", reset);
+      element.addEventListener("pointerdown", reset);
+      element.addEventListener("focusin", reset);
+      enabled.addEventListener("change", reset);
+      return () => {
+        reset();
+        element.removeEventListener("pointerenter", enter);
+        element.removeEventListener("pointermove", move);
+        element.removeEventListener("pointerleave", reset);
+        element.removeEventListener("pointerdown", reset);
+        element.removeEventListener("focusin", reset);
+        enabled.removeEventListener("change", reset);
+      };
+    });
+    return () => cleanups.forEach((cleanup) => cleanup());
+  }, [mode]);
 
   useEffect(() => {
     const rail = railRef.current;
@@ -705,7 +762,7 @@ export function WorldCommandCenter() {
 
   return (
     <main className="world-command-page" id="main-content" tabIndex={-1}>
-      <section className="world-command" aria-labelledby="world-command-title">
+      <section className="world-command" ref={surfaceRef} aria-labelledby="world-command-title">
         <header className="world-command-copy">
           <div><p>{siteCopy.worldAtlas.atlasCaption}</p><h1 id="world-command-title">{siteCopy.worldAtlas.title}</h1></div>
           <span>{siteCopy.worldAtlas.atlasSubtitle}</span>
@@ -715,13 +772,13 @@ export function WorldCommandCenter() {
             <WorldRingScene activeIndex={activeIndex} onSelect={selectCity} onReady={handleReady}
               onUnavailable={handleUnavailable} controllerRef={controllerRef} />
             <p className="world-command-hint">{siteCopy.worldAtlas.atlasHint}</p>
-            <div className="command-map-zoom" role="group" aria-label={siteCopy.worldAtlas.controls.label}>
+            <div className="command-map-zoom atlas-glass" data-atlas-tilt="2" role="group" aria-label={siteCopy.worldAtlas.controls.label}>
               <button type="button" aria-label={siteCopy.worldAtlas.controls.zoomIn} onClick={() => controllerRef.current?.zoom(-5)}>＋</button>
               <button type="button" aria-label={siteCopy.worldAtlas.controls.zoomOut} onClick={() => controllerRef.current?.zoom(5)}>−</button>
               <button type="button" onClick={() => controllerRef.current?.overview()}>{siteCopy.worldAtlas.controls.worldShort}</button>
             </div>
           </div>
-          <aside className="command-city-panel" data-city={active.code} data-expanded={detailsExpanded} aria-labelledby="command-city-name">
+          <aside className="command-city-panel atlas-glass" data-atlas-tilt="1.8" data-city={active.code} data-expanded={detailsExpanded} aria-labelledby="command-city-name">
             <header>
               <span>{active.code} · {active.country}</span>
               <strong id="command-city-name">{active.name}</strong>
@@ -753,7 +810,7 @@ export function WorldCommandCenter() {
           </aside>
           <p className="sr-only" aria-live="polite">已选择{active.name}，{active.country}</p>
         </div>
-        <div className="command-place-index">
+        <div className="command-place-index atlas-glass" data-atlas-tilt="0.25">
           <div className="command-index-heading"><span>{siteCopy.worldAtlas.placeIndex}</span><small>{nodeCounter}</small></div>
           <nav className="world-command-node-rail" ref={railRef} aria-label="城市节点索引">
             {cities.map((city, index) => <button type="button" key={city.code}

@@ -16,7 +16,7 @@ The world route is an archive observatory, not a generic analytics dashboard. Th
 - Twenty-four city nodes use real latitude/longitude data. Explicit graph edges form regional and intercontinental routes rather than one sequential polyline.
 - Selected nodes turn to the camera and tighten its field of view from 46 to 40 degrees. Camera height follows the city's latitude without tilting the map. Manual rotation preserves the current zoom; overview restores 46 degrees. The dossier preserves local time, live Open-Meteo weather, coordinates, and the archive note.
 - Light and dark mode swap the cartographic texture, graticule, route, and glow palette inside Three.js; this is not a full-canvas brightness filter.
-- The dossier stays still for reading. Connected destinations expand on demand from the actual route graph; there is no decorative fake route readout.
+- The dossier, place index, and zoom controls use translucent mineral-paper tints with a restrained pointer-following highlight. Fine-pointer hover tilts the dossier by at most 1.8 degrees, the index by 0.25 degrees, and the zoom controls by 2 degrees; leaving, clicking, or keyboard focus resets the surface. Touch and reduced-motion modes stay still. Connected destinations expand on demand from the actual route graph; there is no decorative fake route readout.
 - Only the selected node pulses gently. Hover and focus reveal labels; all city names remain available in the horizontally scrolling index.
 - Reduced-motion preferences and unavailable WebGL fall back to the existing planar atlas.
 
