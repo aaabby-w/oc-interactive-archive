@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import * as THREE from "three";
 import { siteCopy } from "@/content/site";
 import { WorldAtlas } from "@/components/world-atlas";
@@ -13,8 +13,9 @@ type WeatherState =
   | { cityCode: string; status: "ready"; reading: WeatherReading };
 
 type SceneController = {
-  focus: (longitude: number) => void;
+  focus: (longitude: number, latitude: number) => void;
   overview: () => void;
+  zoom: (delta: number) => void;
 };
 
 type ThemeMode = "light" | "dark";
@@ -25,7 +26,12 @@ const weatherCache = new Map<string, WeatherReading>();
 const CENTRAL_MERIDIAN = 11.25;
 const TAU = Math.PI * 2;
 const RADIUS = 6.4;
-const SCREEN_HEIGHT = 4.2;
+// Match the 2:1 equirectangular artwork to the cylinder's unwrapped surface.
+const SCREEN_HEIGHT = TAU * RADIUS / 2;
+const OVERVIEW_FOV = 46;
+const FOCUS_FOV = 40;
+const MIN_FOV = 28;
+const MAX_FOV = 78;
 const INITIAL_CITY_INDEX = 8;
 
 const weatherDescriptions: Record<number, { zh: string; en: string }> = {
@@ -190,9 +196,9 @@ function WorldRingScene({
     renderer.setClearColor(0x000000, 0);
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(58, 1, 0.1, 30);
-    camera.position.set(0, 0, 0);
-    camera.lookAt(0, 0, -1);
+    const camera = new THREE.PerspectiveCamera(OVERVIEW_FOV, 1, 0.1, 30);
+    let cameraY = surfacePoint(0, cities[INITIAL_CITY_INDEX].latitude).y;
+    let targetCameraY = cameraY;
     const ring = new THREE.Group();
     scene.add(ring);
 
@@ -249,11 +255,14 @@ function WorldRingScene({
     }
 
     const mapTextures: Partial<Record<ThemeMode, THREE.Texture>> = {};
+    const textureAbort = new AbortController();
+    let disposed = false;
     const currentTheme = (): ThemeMode => document.documentElement.dataset.theme === "dark" ? "dark" : "light";
     const applyTheme = () => {
       const theme = currentTheme();
       const texture = mapTextures[theme] ?? mapTextures.light ?? mapTextures.dark;
       if (texture) mapMaterial.map = texture;
+      if (!mapTextures[theme]) void loadThemeTexture(theme);
       mapMaterial.opacity = theme === "dark" ? 0.82 : 0.9;
       mapMaterial.needsUpdate = true;
       gridMaterial.map = gridTextures[theme];
@@ -267,32 +276,79 @@ function WorldRingScene({
     themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
     const textureLoader = new THREE.TextureLoader();
-    Promise.all(([
-      ["light", `${basePath}/maps/world-equirectangular-light.svg`],
-      ["dark", `${basePath}/maps/world-equirectangular-dark.svg`],
-    ] satisfies Array<[ThemeMode, string]>).map(async ([theme, source]) => {
-      const texture = await textureLoader.loadAsync(source);
-      texture.colorSpace = THREE.SRGBColorSpace;
-      texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-      mapTextures[theme] = texture;
-    })).then(() => {
-      applyTheme();
-      onReady();
-    }).catch(onUnavailable);
+    const loadingThemes = new Set<ThemeMode>();
+    async function loadThemeTexture(theme: ThemeMode) {
+      if (disposed || loadingThemes.has(theme)) return;
+      loadingThemes.add(theme);
+      try {
+        const source = `${basePath}/maps/world-equirectangular-${theme}.svg`;
+        const response = await fetch(source, { signal: textureAbort.signal });
+        if (!response.ok) throw new Error(`Map request failed: ${response.status}`);
+        // Rasterize the existing vector at display-appropriate resolution, without
+        // changing its paths, projection, colours, or bundled source artwork.
+        const width = Math.min(window.innerWidth > 700 ? 8192 : 4096, renderer.capabilities.maxTextureSize);
+        const svg = (await response.text()).replace(/width="2048" height="1024"/, `width="${width}" height="${width / 2}"`);
+        const objectUrl = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
+        let texture: THREE.Texture;
+        try {
+          texture = await textureLoader.loadAsync(objectUrl);
+        } finally {
+          URL.revokeObjectURL(objectUrl);
+        }
+        if (disposed || currentTheme() !== theme) { texture.dispose(); return; }
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.anisotropy = Math.min(16, renderer.capabilities.getMaxAnisotropy());
+        mapTextures[theme] = texture;
+        stage.dataset.textureSize = `${width}×${width / 2}`;
+        applyTheme();
+        // Keep only the displayed high-resolution atlas resident on the GPU.
+        const other: ThemeMode = theme === "light" ? "dark" : "light";
+        mapTextures[other]?.dispose();
+        delete mapTextures[other];
+        onReady();
+      } catch {
+        if (!disposed) onUnavailable();
+      } finally {
+        loadingThemes.delete(theme);
+      }
+    }
+    void loadThemeTexture(currentTheme());
 
     const nodePositions = cities.map((city) => surfacePoint(city.longitude, city.latitude, RADIUS - 0.16));
     let rotation = longitudeAngle(cities[INITIAL_CITY_INDEX].longitude);
     let targetRotation = rotation;
     let velocity = 0;
-    let fov = 52;
-    let targetFov = 52;
+    let fov = OVERVIEW_FOV;
+    let targetFov = OVERVIEW_FOV;
     let frame = 0;
     let lastFrame = performance.now();
     let dragging = false;
     let pointerId = -1;
     let previousX = 0;
+    let previousY = 0;
     let previousTime = 0;
     let pointerVelocity = 0;
+    const pointers = new Map<number, { x: number; y: number }>();
+    let pinchDistance = 0;
+    let pinchFov = fov;
+
+    function clampLatitude(value: number, fieldOfView = fov) {
+      const halfView = RADIUS * Math.tan(THREE.MathUtils.degToRad(fieldOfView / 2));
+      const limit = Math.max(0, SCREEN_HEIGHT / 2 - halfView - 0.15);
+      return THREE.MathUtils.clamp(value, -limit, limit);
+    }
+
+    function zoomTo(value: number) {
+      targetFov = THREE.MathUtils.clamp(value, MIN_FOV, MAX_FOV);
+      targetCameraY = clampLatitude(targetCameraY, targetFov);
+      velocity = 0;
+      ensureFrame();
+    }
+
+    function touchDistance() {
+      const [a, b] = [...pointers.values()];
+      return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
+    }
 
     function resize() {
       const rect = stage.getBoundingClientRect();
@@ -322,12 +378,19 @@ function WorldRingScene({
         button.style.setProperty("--node-scale", depth.toFixed(3));
         button.style.opacity = inFrame ? String(Math.min(1, 0.42 + depth * 0.58)) : "0";
         button.style.pointerEvents = inFrame ? "auto" : "none";
+        button.tabIndex = inFrame ? 0 : -1;
+        button.setAttribute("aria-hidden", String(!inFrame));
       });
     }
 
     function renderFrame() {
       ring.rotation.y = rotation;
       camera.fov = fov;
+      stage.dataset.fov = fov.toFixed(2);
+      cameraY = clampLatitude(cameraY);
+      stage.dataset.latitude = cameraY.toFixed(3);
+      camera.position.set(0, cameraY, 0);
+      camera.lookAt(0, cameraY, -1);
       camera.updateProjectionMatrix();
       renderer.render(scene, camera);
       projectNodes();
@@ -352,27 +415,41 @@ function WorldRingScene({
         targetRotation += velocity * elapsed;
       }
       fov += (targetFov - fov) * fovEase;
+      cameraY += (targetCameraY - cameraY) * fovEase;
       renderFrame();
-      if (Math.abs(targetRotation - rotation) > 0.0002 || Math.abs(velocity) > 0.00001 || Math.abs(targetFov - fov) > 0.02) {
-        ensureFrame();
+      if (Math.abs(targetRotation - rotation) > 0.0002 || Math.abs(velocity) > 0.00001 || Math.abs(targetFov - fov) > 0.02 || Math.abs(targetCameraY - cameraY) > 0.001) {
+        frame = requestAnimationFrame(tick);
       }
     }
 
     function onWheel(event: WheelEvent) {
       event.preventDefault();
-      const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
-      targetRotation += delta * 0.00145;
-      velocity = delta * 0.000012;
-      targetFov = 58;
-      ensureFrame();
+      const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? stage.clientHeight : 1;
+      if (event.ctrlKey || Math.abs(event.deltaY) >= Math.abs(event.deltaX)) {
+        zoomTo(targetFov + event.deltaY * unit * (event.ctrlKey ? 0.12 : 0.045));
+      } else {
+        targetRotation += event.deltaX * unit * 0.00145;
+        velocity = event.deltaX * unit * 0.000012;
+        ensureFrame();
+      }
     }
 
     function onPointerDown(event: PointerEvent) {
       const target = event.target as HTMLElement;
       if (target.closest("[data-command-ui]")) return;
+      pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      stage.setPointerCapture(event.pointerId);
+      if (pointers.size >= 2) {
+        pinchDistance = touchDistance();
+        pinchFov = targetFov;
+        velocity = 0;
+        pointerVelocity = 0;
+        return;
+      }
       dragging = true;
       pointerId = event.pointerId;
       previousX = event.clientX;
+      previousY = event.clientY;
       previousTime = performance.now();
       pointerVelocity = 0;
       velocity = 0;
@@ -381,20 +458,46 @@ function WorldRingScene({
     }
 
     function onPointerMove(event: PointerEvent) {
+      if (!pointers.has(event.pointerId)) return;
+      pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (pointers.size >= 2) {
+        const distance = touchDistance();
+        if (distance > 0 && pinchDistance > 0) zoomTo(THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(pinchFov / 2)) * pinchDistance / distance)));
+        return;
+      }
       if (!dragging || event.pointerId !== pointerId) return;
       const now = performance.now();
       const deltaX = event.clientX - previousX;
+      const deltaY = event.clientY - previousY;
       const elapsed = Math.max(8, now - previousTime);
       targetRotation += deltaX * 0.0042;
       rotation = targetRotation;
+      const unitsPerPixel = 2 * RADIUS * Math.tan(THREE.MathUtils.degToRad(fov / 2)) / Math.max(1, stage.clientHeight);
+      targetCameraY = clampLatitude(cameraY + deltaY * unitsPerPixel);
+      cameraY = targetCameraY;
       pointerVelocity = (deltaX * 0.0042) / elapsed;
       previousX = event.clientX;
+      previousY = event.clientY;
       previousTime = now;
-      targetFov = 58;
       renderFrame();
     }
 
     function onPointerEnd(event: PointerEvent) {
+      const wasPinching = pointers.size >= 2;
+      pointers.delete(event.pointerId);
+      if (stage.hasPointerCapture(event.pointerId)) stage.releasePointerCapture(event.pointerId);
+      if (wasPinching) {
+        const remaining = [...pointers.entries()][0];
+        pointerVelocity = 0;
+        velocity = 0;
+        if (remaining) {
+          pointerId = remaining[0];
+          previousX = remaining[1].x;
+          previousY = remaining[1].y;
+          previousTime = performance.now();
+        }
+        return;
+      }
       if (!dragging || event.pointerId !== pointerId) return;
       dragging = false;
       delete stage.dataset.dragging;
@@ -405,15 +508,23 @@ function WorldRingScene({
     }
 
     function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+        event.preventDefault();
+        targetCameraY = clampLatitude(targetCameraY + (event.key === "ArrowUp" ? 0.6 : -0.6));
+        ensureFrame();
+      }
+      if (["+", "=", "-", "_"].includes(event.key)) {
+        event.preventDefault();
+        zoomTo(targetFov + (["+", "="].includes(event.key) ? -5 : 5));
+      }
       if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
         event.preventDefault();
         targetRotation += event.key === "ArrowLeft" ? -0.24 : 0.24;
-        targetFov = 58;
         ensureFrame();
       }
       if (event.key === "Home" || event.key === "0") {
         event.preventDefault();
-        targetFov = 58;
+        targetFov = OVERVIEW_FOV;
         targetRotation = nearestTurn(0, rotation);
         ensureFrame();
       }
@@ -429,14 +540,16 @@ function WorldRingScene({
     resizeObserver.observe(stage);
 
     controllerRef.current = {
-      focus(longitude) {
+      zoom(delta) { zoomTo(targetFov + delta); },
+      focus(longitude, latitude) {
         targetRotation = nearestTurn(longitudeAngle(longitude), rotation);
-        targetFov = 45;
+        targetFov = FOCUS_FOV;
+        targetCameraY = surfacePoint(longitude, latitude).y;
         velocity = 0;
         ensureFrame();
       },
       overview() {
-        targetFov = 58;
+        targetFov = OVERVIEW_FOV;
         ensureFrame();
       },
     };
@@ -445,6 +558,8 @@ function WorldRingScene({
     renderFrame();
 
     return () => {
+      disposed = true;
+      textureAbort.abort();
       cancelAnimationFrame(frame);
       themeObserver.disconnect();
       resizeObserver.disconnect();
@@ -474,7 +589,7 @@ function WorldRingScene({
       role="group"
       tabIndex={0}
       aria-label={siteCopy.worldAtlas.mapLabel}
-      aria-keyshortcuts="ArrowLeft ArrowRight Home 0"
+      aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown Home 0 + -"
     >
       <canvas ref={canvasRef} aria-hidden="true" />
       <div className="command-ring-nodes" data-command-ui>
@@ -497,7 +612,6 @@ function WorldRingScene({
         ))}
       </div>
       <div className="command-ring-shade" aria-hidden="true" />
-      <div className="command-ring-reticle" aria-hidden="true"><span /><i /></div>
     </div>
   );
 }
@@ -508,8 +622,20 @@ export function WorldCommandCenter() {
   const [now, setNow] = useState<Date | null>(null);
   const [weather, setWeather] = useState<WeatherState>({ cityCode: "", status: "loading" });
   const controllerRef = useRef<SceneController | null>(null);
-  const screenRef = useRef<HTMLDivElement>(null);
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const railRef = useRef<HTMLElement>(null);
   const active = cities[activeIndex];
+
+  useEffect(() => {
+    const rail = railRef.current;
+    const selected = rail?.children[activeIndex] as HTMLElement | undefined;
+    if (!rail || !selected) return;
+    const centerSelected = () => rail.scrollTo({ left: selected.offsetLeft - rail.offsetLeft - (rail.clientWidth - selected.clientWidth) / 2 });
+    centerSelected();
+    const observer = new ResizeObserver(centerSelected);
+    observer.observe(rail);
+    return () => observer.disconnect();
+  }, [activeIndex]);
 
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -561,7 +687,7 @@ export function WorldCommandCenter() {
 
   const selectCity = useCallback((index: number) => {
     setActiveIndex(index);
-    controllerRef.current?.focus(cities[index].longitude);
+    controllerRef.current?.focus(cities[index].longitude, cities[index].latitude);
   }, []);
 
   const handleReady = useCallback(() => setMode("ring"), []);
@@ -572,43 +698,8 @@ export function WorldCommandCenter() {
   const time = now ? formatLocalTime(active.timeZone, now) : "--:--:--";
   const nodeCounter = useMemo(() => `${String(activeIndex + 1).padStart(2, "0")} / ${cities.length}`, [activeIndex]);
 
-  const moveHud = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.pointerType === "touch") return;
-    const element = screenRef.current;
-    if (!element) return;
-    const rect = element.getBoundingClientRect();
-    const x = Math.max(-1, Math.min(1, ((event.clientX - rect.left) / rect.width) * 2 - 1));
-    const y = Math.max(-1, Math.min(1, ((event.clientY - rect.top) / rect.height) * 2 - 1));
-    element.style.setProperty("--room-x", x.toFixed(3));
-    element.style.setProperty("--room-y", y.toFixed(3));
-    element.style.setProperty("--hud-x", `${(x * 10).toFixed(2)}px`);
-    element.style.setProperty("--hud-y", `${(y * 7).toFixed(2)}px`);
-    element.style.setProperty("--hud-far-x", `${(x * 4).toFixed(2)}px`);
-    element.style.setProperty("--hud-far-y", `${(y * 3).toFixed(2)}px`);
-    element.style.setProperty("--hud-opposite-x", `${(x * -4.5).toFixed(2)}px`);
-    element.style.setProperty("--hud-opposite-y", `${(y * -3.2).toFixed(2)}px`);
-    element.style.setProperty("--hud-rx", `${(-y * 1.4).toFixed(2)}deg`);
-    element.style.setProperty("--hud-ry", `${(x * 1.8).toFixed(2)}deg`);
-    element.style.setProperty("--light-x", `${((x + 1) / 2 * 100).toFixed(1)}%`);
-    element.style.setProperty("--light-y", `${((y + 1) / 2 * 100).toFixed(1)}%`);
-  }, []);
-
-  const resetHud = useCallback(() => {
-    const element = screenRef.current;
-    if (!element) return;
-    element.style.setProperty("--room-x", "0");
-    element.style.setProperty("--room-y", "0");
-    element.style.setProperty("--hud-x", "0px");
-    element.style.setProperty("--hud-y", "0px");
-    element.style.setProperty("--hud-far-x", "0px");
-    element.style.setProperty("--hud-far-y", "0px");
-    element.style.setProperty("--hud-opposite-x", "0px");
-    element.style.setProperty("--hud-opposite-y", "0px");
-    element.style.setProperty("--hud-rx", "0deg");
-    element.style.setProperty("--hud-ry", "0deg");
-    element.style.setProperty("--light-x", "50%");
-    element.style.setProperty("--light-y", "42%");
-  }, []);
+  const connectedCities = cities.filter((city) => links.some(([from, to]) =>
+    (from === active.code && to === city.code) || (to === active.code && from === city.code)));
 
   if (mode === "flat") return <WorldAtlas />;
 
@@ -616,84 +707,64 @@ export function WorldCommandCenter() {
     <main className="world-command-page" id="main-content" tabIndex={-1}>
       <section className="world-command" aria-labelledby="world-command-title">
         <header className="world-command-copy">
-          <p>{siteCopy.worldAtlas.eyebrow}</p>
-          <h1 id="world-command-title">{siteCopy.worldAtlas.title}</h1>
-          <span>{siteCopy.worldAtlas.intro}</span>
+          <div><p>{siteCopy.worldAtlas.atlasCaption}</p><h1 id="world-command-title">{siteCopy.worldAtlas.title}</h1></div>
+          <span>{siteCopy.worldAtlas.atlasSubtitle}</span>
         </header>
-
-        <div className="world-command-screen" ref={screenRef} onPointerMove={moveHud} onPointerLeave={resetHud}>
-          <WorldRingScene
-            activeIndex={activeIndex}
-            onSelect={selectCity}
-            onReady={handleReady}
-            onUnavailable={handleUnavailable}
-            controllerRef={controllerRef}
-          />
-
-          <div className="world-command-status command-hud" data-command-ui aria-hidden="true">
-            <span>{siteCopy.worldAtlas.ringMode}</span>
-            <b>{nodeCounter}</b>
+        <div className="world-command-screen">
+          <div className="command-map-area">
+            <WorldRingScene activeIndex={activeIndex} onSelect={selectCity} onReady={handleReady}
+              onUnavailable={handleUnavailable} controllerRef={controllerRef} />
+            <p className="world-command-hint">{siteCopy.worldAtlas.atlasHint}</p>
+            <div className="command-map-zoom" role="group" aria-label={siteCopy.worldAtlas.controls.label}>
+              <button type="button" aria-label={siteCopy.worldAtlas.controls.zoomIn} onClick={() => controllerRef.current?.zoom(-5)}>＋</button>
+              <button type="button" aria-label={siteCopy.worldAtlas.controls.zoomOut} onClick={() => controllerRef.current?.zoom(5)}>−</button>
+              <button type="button" onClick={() => controllerRef.current?.overview()}>{siteCopy.worldAtlas.controls.worldShort}</button>
+            </div>
           </div>
-
-          <div className="command-room-telemetry command-hud" data-command-ui aria-hidden="true">
-            <span>ROUTE FIELD / LIVE</span>
-            <svg viewBox="0 0 148 76" role="presentation">
-              <path d="M8 55 34 22 65 47 91 15 139 38 112 66 65 47 34 64Z" />
-              <g><circle cx="8" cy="55" r="2" /><circle cx="34" cy="22" r="2" /><circle cx="34" cy="64" r="2" /><circle cx="65" cy="47" r="3" /><circle cx="91" cy="15" r="2" /><circle cx="112" cy="66" r="2" /><circle cx="139" cy="38" r="2" /></g>
-            </svg>
-            <small>{coordinates}<b>LINKS · {links.length}</b></small>
-          </div>
-
-          <aside className="command-city-panel command-hud" data-command-ui data-city={active.code} aria-labelledby="command-city-name">
+          <aside className="command-city-panel" data-city={active.code} data-expanded={detailsExpanded} aria-labelledby="command-city-name">
             <header>
-              <span>{active.code} · CITY NODE</span>
+              <span>{active.code} · {active.country}</span>
               <strong id="command-city-name">{active.name}</strong>
               <small>{active.en} / {active.countryEn}</small>
             </header>
-            <dl>
+            <dl className="command-city-conditions">
               <div><dt>{siteCopy.worldAtlas.localTime}</dt><dd className="command-city-time">{time}</dd></div>
-              <div>
-                <dt>{siteCopy.worldAtlas.weather}</dt>
-                <dd>
-                  {visibleWeather.status === "loading" && siteCopy.worldAtlas.weatherLoading}
-                  {visibleWeather.status === "error" && siteCopy.worldAtlas.weatherUnavailable}
-                  {visibleWeather.status === "ready" && <>{describeWeather(visibleWeather.reading.weatherCode).zh}<small>{describeWeather(visibleWeather.reading.weatherCode).en}</small></>}
-                </dd>
-              </div>
-              <div><dt>{siteCopy.worldAtlas.temperature}</dt><dd>{visibleWeather.status === "ready" ? `${Math.round(visibleWeather.reading.temperature)}°C` : "—"}</dd></div>
-              <div><dt>{siteCopy.worldAtlas.wind}</dt><dd>{visibleWeather.status === "ready" ? `${Math.round(visibleWeather.reading.windSpeed)} km/h` : "—"}</dd></div>
-              <div className="command-city-coordinates"><dt>{siteCopy.worldAtlas.coordinates}</dt><dd>{coordinates}</dd></div>
+              <div><dt>{siteCopy.worldAtlas.weather}</dt><dd>
+                {visibleWeather.status === "loading" && siteCopy.worldAtlas.weatherLoading}
+                {visibleWeather.status === "error" && siteCopy.worldAtlas.weatherUnavailable}
+                {visibleWeather.status === "ready" && describeWeather(visibleWeather.reading.weatherCode).zh}
+              </dd></div>
+              <div className="command-condition-secondary"><dt>{siteCopy.worldAtlas.temperature}</dt><dd>{visibleWeather.status === "ready" ? `${Math.round(visibleWeather.reading.temperature)}°C` : "—"}</dd></div>
+              <div className="command-condition-secondary"><dt>{siteCopy.worldAtlas.wind}</dt><dd>{visibleWeather.status === "ready" ? `${Math.round(visibleWeather.reading.windSpeed)} km/h` : "—"}</dd></div>
             </dl>
-            <div className="command-city-record">
-              <span>{siteCopy.worldAtlas.record}</span>
-              <p>{active.record}</p>
+            <button type="button" className="command-detail-toggle" aria-expanded={detailsExpanded} aria-controls="command-city-extra" onClick={() => setDetailsExpanded(!detailsExpanded)}>
+              {detailsExpanded ? siteCopy.worldAtlas.collapseDossier : siteCopy.worldAtlas.expandDossier}
+            </button>
+            <div className="command-city-extra" id="command-city-extra">
+              <div className="command-city-record"><span>{siteCopy.worldAtlas.record}</span><p>{active.record}</p></div>
+              <details className="command-city-routes">
+                <summary>{siteCopy.worldAtlas.connectedPlaces} <span>{connectedCities.length}</span></summary>
+                <div>{connectedCities.map((city) => <button key={city.code} type="button" onClick={() => selectCity(cities.indexOf(city))}>{city.name}<span>↗</span></button>)}</div>
+              </details>
+              <p className="command-city-coordinates">{coordinates}</p>
+              <a className="command-weather-source" href="https://open-meteo.com/" target="_blank" rel="noreferrer">{siteCopy.worldAtlas.weatherSource}</a>
             </div>
-            <footer>
-              <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">{siteCopy.worldAtlas.weatherSource}</a>
-              <button type="button" onClick={() => controllerRef.current?.overview()}>{siteCopy.worldAtlas.overview}</button>
-            </footer>
+            <footer><button type="button" onClick={() => controllerRef.current?.overview()}>{siteCopy.worldAtlas.overview} <span>↗</span></button></footer>
           </aside>
-
-          <p className="world-command-hint command-hud" data-command-ui>{siteCopy.worldAtlas.hint}</p>
           <p className="sr-only" aria-live="polite">已选择{active.name}，{active.country}</p>
         </div>
-
-        <nav className="world-command-node-rail" data-command-ui aria-label="城市节点索引">
-          {cities.map((city, index) => (
-            <button
-              type="button"
-              key={city.code}
+        <div className="command-place-index">
+          <div className="command-index-heading"><span>{siteCopy.worldAtlas.placeIndex}</span><small>{nodeCounter}</small></div>
+          <nav className="world-command-node-rail" ref={railRef} aria-label="城市节点索引">
+            {cities.map((city, index) => <button type="button" key={city.code}
               className={index === activeIndex ? "is-active" : ""}
-              aria-current={index === activeIndex ? "location" : undefined}
-              onClick={() => selectCity(index)}
-            >
+              aria-current={index === activeIndex ? "location" : undefined} onClick={() => selectCity(index)}>
               <span>{city.code}</span><small>{city.name}</small>
-            </button>
-          ))}
-        </nav>
-
+            </button>)}
+          </nav>
+        </div>
         <footer className="world-command-footer">
-          <span>{siteCopy.worldAtlas.footer}</span>
+          <span>{siteCopy.worldAtlas.atlasFooter}</span>
           <Link href="/"><i aria-hidden="true">←</i>{siteCopy.common.back}</Link>
         </footer>
       </section>
